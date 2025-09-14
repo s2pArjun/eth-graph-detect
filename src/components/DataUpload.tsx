@@ -73,19 +73,27 @@ const DataUpload: React.FC<DataUploadProps> = ({ onDataUpload }) => {
     }
   };
 
-  const handleAnalyze = () => {
-    if (csvPreview) {
-      // Generate mock full dataset
-      const mockData = Array.from({ length: 1000 }, (_, i) => ({
-        from_address: `0x${Math.random().toString(16).substr(2, 40)}`,
-        to_address: `0x${Math.random().toString(16).substr(2, 40)}`,
-        value: (Math.random() * 1000).toFixed(4),
-        timestamp: new Date(Date.now() - Math.random() * 86400000 * 30).toISOString(),
-        block_number: Math.floor(Math.random() * 1000000),
-        gas_price: (Math.random() * 100).toFixed(2)
-      }));
+  const handleAnalyze = async () => {
+    if (!uploadedFile) return;
+    
+    try {
+      const text = await uploadedFile.text();
+      const lines = text.split('\n').filter(line => line.trim());
+      const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
       
-      onDataUpload(mockData);
+      // Parse full CSV data
+      const data = lines.slice(1).map(line => {
+        const values = line.split(',').map(v => v.trim());
+        const row: any = {};
+        headers.forEach((header, index) => {
+          row[header] = values[index] || '';
+        });
+        return row;
+      }).filter(row => row.from_address && row.to_address); // Remove incomplete rows
+      
+      onDataUpload(data);
+    } catch (error) {
+      console.error('Error processing full CSV:', error);
     }
   };
 
