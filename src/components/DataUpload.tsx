@@ -77,34 +77,20 @@ const DataUpload: React.FC<DataUploadProps> = ({ onDataUpload }) => {
     if (!uploadedFile) return;
     
     try {
-      // ==========================================
-      // CSV DATA PROCESSING PIPELINE
-      // Converts raw CSV data into structured format for graph analysis
-      // ==========================================
-      
       const text = await uploadedFile.text();
+      const lines = text.split('\n').filter(line => line.trim());
+      const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
       
-      // STEP 1: Parse CSV structure
-      const lines = text.split('\n').filter(line => line.trim()); // Remove empty lines
-      const headers = lines[0].split(',').map(h => h.trim().toLowerCase()); // Normalize headers
-      
-      // STEP 2: Data transformation and cleaning
+      // Parse full CSV data
       const data = lines.slice(1).map(line => {
         const values = line.split(',').map(v => v.trim());
         const row: any = {};
-        
-        // Map CSV columns to object properties
         headers.forEach((header, index) => {
-          row[header] = values[index] || ''; // Handle missing values
+          row[header] = values[index] || '';
         });
         return row;
-      })
-      // STEP 3: Data validation and filtering
-      // Remove transactions without valid source and destination addresses
-      // This is critical for graph construction as edges need both endpoints
-      .filter(row => row.from_address && row.to_address);
+      }).filter(row => row.from_address && row.to_address); // Remove incomplete rows
       
-      // STEP 4: Pass cleaned data to fraud detection pipeline
       onDataUpload(data);
     } catch (error) {
       console.error('Error processing full CSV:', error);

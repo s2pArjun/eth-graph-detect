@@ -86,116 +86,58 @@ const FraudDetectionDashboard: React.FC = () => {
   };
 
   const generateRealResults = () => {
-    // ==========================================
-    // STEP 1: ADDRESS EXTRACTION & PREPROCESSING
-    // Extract all unique wallet addresses from the dataset
-    // Time Complexity: O(n) where n = number of transactions
-    // ==========================================
-    
+    // Process actual CSV data
     const uniqueAddresses = new Set<string>();
     csvData.forEach(tx => {
-      // Normalize addresses to lowercase (Ethereum addresses are case-insensitive)
-      // This ensures consistent comparison and prevents duplicates
       if (tx.from_address) uniqueAddresses.add(tx.from_address.toLowerCase());
       if (tx.to_address) uniqueAddresses.add(tx.to_address.toLowerCase());
     });
 
-    // ==========================================
-    // STEP 2: GRAPH METRICS CALCULATION
-    // Build a comprehensive metrics map for each address
-    // These metrics form the foundation for risk assessment
-    // ==========================================
+    // Calculate node metrics
+    const addressMetrics = new Map<string, { inDegree: number; outDegree: number; totalValue: number; transactions: number }>();
     
-    const addressMetrics = new Map<string, { 
-      inDegree: number;      // Number of incoming transactions (money received)
-      outDegree: number;     // Number of outgoing transactions (money sent)  
-      totalValue: number;    // Total transaction volume (ETH)
-      transactions: number;  // Total activity count
-    }>();
-    
-    // Initialize metrics for all addresses with zero values
     uniqueAddresses.forEach(addr => {
       addressMetrics.set(addr, { inDegree: 0, outDegree: 0, totalValue: 0, transactions: 0 });
     });
 
-    // ==========================================
-    // STEP 3: DEGREE CENTRALITY CALCULATION
-    // Calculate network centrality metrics for each address
-    // High degree centrality often indicates important network nodes
-    // ==========================================
-    
     csvData.forEach(tx => {
       const from = tx.from_address?.toLowerCase();
       const to = tx.to_address?.toLowerCase();
-      const value = parseFloat(tx.value) || 0; // Convert to number, default to 0
+      const value = parseFloat(tx.value) || 0;
 
-      // Update sender (from) metrics
       if (from && addressMetrics.has(from)) {
         const metrics = addressMetrics.get(from)!;
-        metrics.outDegree++;        // Increment outgoing connections
-        metrics.totalValue += value; // Add transaction value
-        metrics.transactions++;      // Increment total activity
+        metrics.outDegree++;
+        metrics.totalValue += value;
+        metrics.transactions++;
       }
 
-      // Update receiver (to) metrics  
       if (to && addressMetrics.has(to)) {
         const metrics = addressMetrics.get(to)!;
-        metrics.inDegree++;         // Increment incoming connections
-        metrics.totalValue += value; // Add transaction value  
-        metrics.transactions++;      // Increment total activity
+        metrics.inDegree++;
+        metrics.totalValue += value;
+        metrics.transactions++;
       }
     });
 
-    // ==========================================
-    // STEP 4: RISK SCORING & PAGERANK CALCULATION
-    // Create graph nodes with calculated risk scores and centrality measures
-    // ==========================================
-    
+    // Calculate PageRank-like scores and risk
     const nodes = Array.from(uniqueAddresses).map(addr => {
       const metrics = addressMetrics.get(addr)!;
-      const degree = metrics.inDegree + metrics.outDegree; // Total degree centrality
-      const avgValue = metrics.totalValue / Math.max(metrics.transactions, 1); // Average transaction value
+      const degree = metrics.inDegree + metrics.outDegree;
+      const avgValue = metrics.totalValue / Math.max(metrics.transactions, 1);
       
-      // ==========================================
-      // MULTI-FACTOR RISK ASSESSMENT ALGORITHM
-      // Combines multiple suspicious patterns into a single risk score
-      // Each factor represents a different type of suspicious behavior
-      // ==========================================
-      
+      // Risk calculation based on unusual patterns
       let risk = 0;
-      
-      // RISK FACTOR 1: High out-degree (potential money laundering/mixing)
-      // Threshold: >20 outgoing transactions
-      // Weight: 30% of total risk score
-      if (metrics.outDegree > 20) risk += 0.3;
-      
-      // RISK FACTOR 2: High in-degree (potential collection point/exchange)  
-      // Threshold: >50 incoming transactions
-      // Weight: 20% of total risk score
-      if (metrics.inDegree > 50) risk += 0.2;
-      
-      // RISK FACTOR 3: Very high activity (potential bot/service)
-      // Threshold: >100 total transactions
-      // Weight: 30% of total risk score  
-      if (degree > 100) risk += 0.3;
-      
-      // RISK FACTOR 4: High-value transactions (potential major player)
-      // Threshold: >1000 ETH average per transaction
-      // Weight: 20% of total risk score
-      if (avgValue > 1000) risk += 0.2;
-      
-      // ==========================================
-      // SIMPLIFIED PAGERANK CALCULATION
-      // Real PageRank uses iterative algorithm with damping factor
-      // This simplified version uses degree centrality as approximation
-      // Formula: total_degree / total_nodes
-      // ==========================================
+      if (metrics.outDegree > 20) risk += 0.3; // High out-degree
+      if (metrics.inDegree > 50) risk += 0.2; // High in-degree  
+      if (degree > 100) risk += 0.3; // Very active
+      if (avgValue > 1000) risk += 0.2; // High value transactions
       
       return {
         id: addr,
-        label: `${addr.substring(0, 8)}...`, // Truncated address for display
-        risk: Math.min(risk, 1), // Normalize risk to [0,1] range
-        pagerank: degree / uniqueAddresses.size // Normalized centrality score
+        label: `${addr.substring(0, 8)}...`,
+        risk: Math.min(risk, 1),
+        pagerank: degree / uniqueAddresses.size
       };
     });
 
@@ -216,32 +158,14 @@ const FraudDetectionDashboard: React.FC = () => {
         reason: node.risk >= 0.8 ? "Multiple risk factors" : "Unusual activity pattern"
       }));
 
-    // ==========================================
-    // STEP 6: CYCLE DETECTION ALGORITHM  
-    // Detects potential wash trading and circular money flows
-    // This is a simplified 2-node cycle detection algorithm
-    // ==========================================
-    
+    // Simple cycle detection (look for reciprocal transactions)
     const cycles: string[][] = [];
-    const reciprocalPairs = new Set<string>(); // Prevent duplicate detection
-    
-    // RECIPROCAL TRANSACTION DETECTION
-    // Algorithm: For each transaction A→B, look for reverse transaction B→A  
-    // This indicates potential wash trading or money laundering cycles
-    // Time Complexity: O(m²) where m = number of edges
-    // 
-    // NOTE: Advanced cycle detection would use DFS to find longer cycles (3+ nodes)
-    // For production systems, consider implementing Tarjan's algorithm for SCCs
+    const reciprocalPairs = new Set<string>();
     
     edges.forEach(edge => {
-      // Look for reverse transaction: if A→B exists, check if B→A also exists
       const reverse = edges.find(e => e.source === edge.target && e.target === edge.source);
-      
       if (reverse && !reciprocalPairs.has(`${edge.target}-${edge.source}`)) {
-        // Found a 2-node cycle (reciprocal transactions)
         cycles.push([edge.source, edge.target]);
-        
-        // Mark this pair as processed to avoid duplicate detection
         reciprocalPairs.add(`${edge.source}-${edge.target}`);
       }
     });
