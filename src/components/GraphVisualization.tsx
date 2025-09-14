@@ -44,47 +44,92 @@ const GraphVisualization: React.FC<GraphVisualizationProps> = ({ data }) => {
   }, [filteredNodes, filteredEdges, zoomLevel, selectedLayout]);
 
   const drawGraph = (ctx: CanvasRenderingContext2D, width: number, height: number) => {
-    // Clear canvas
+    // Clear canvas with dark background for better contrast
     ctx.fillStyle = '#0a0a0a';
     ctx.fillRect(0, 0, width, height);
 
+    // Store calculated node positions for rendering
     const positions = new Map<string, { x: number; y: number }>();
     
-    // Apply different layout algorithms
+    // ==========================================
+    // GRAPH LAYOUT ALGORITHMS
+    // Different algorithms serve different analytical purposes
+    // ==========================================
+    
     if (selectedLayout === "circular") {
-      // Circular layout
+      // ==========================================
+      // CIRCULAR LAYOUT ALGORITHM
+      // Best for: Small to medium networks, equal node visibility
+      // Time Complexity: O(n) where n = number of nodes
+      // Use case: When you want to see all nodes clearly without clustering
+      // ==========================================
+      
       filteredNodes.forEach((node, i) => {
+        // Distribute nodes evenly around a circle
+        // Formula: angle = (index / total_nodes) * 2π
         const angle = (i / filteredNodes.length) * 2 * Math.PI;
-        const radius = Math.min(width, height) * 0.35;
+        const radius = Math.min(width, height) * 0.35; // 35% of canvas size
+        
+        // Convert polar coordinates (angle, radius) to Cartesian (x, y)
         positions.set(node.id, {
           x: width / 2 + Math.cos(angle) * radius,
           y: height / 2 + Math.sin(angle) * radius
         });
       });
+      
     } else if (selectedLayout === "hierarchical") {
-      // Hierarchical layout based on risk
+      // ==========================================
+      // HIERARCHICAL LAYOUT ALGORITHM  
+      // Best for: Risk-based analysis, showing levels of suspicion
+      // Time Complexity: O(n log n) due to sorting
+      // Use case: When risk levels are primary concern
+      // ==========================================
+      
+      // Sort nodes by risk level (highest risk at top)
       const sortedNodes = [...filteredNodes].sort((a, b) => b.risk - a.risk);
-      const layers = 4;
+      const layers = 4; // Number of risk tiers
       const nodesPerLayer = Math.ceil(sortedNodes.length / layers);
       
       sortedNodes.forEach((node, i) => {
+        // Calculate which layer (risk tier) this node belongs to
         const layer = Math.floor(i / nodesPerLayer);
-        const posInLayer = i % nodesPerLayer;
+        const posInLayer = i % nodesPerLayer; // Position within the layer
         const layerNodes = Math.min(nodesPerLayer, sortedNodes.length - layer * nodesPerLayer);
         
+        // Distribute nodes evenly within each layer
         positions.set(node.id, {
-          x: (width / (layerNodes + 1)) * (posInLayer + 1),
-          y: (height / (layers + 1)) * (layer + 1)
+          x: (width / (layerNodes + 1)) * (posInLayer + 1), // Spread across width
+          y: (height / (layers + 1)) * (layer + 1)          // Layer by layer vertically
         });
       });
+      
     } else {
-      // Force-directed layout with simple physics
+      // ==========================================
+      // FORCE-DIRECTED LAYOUT (SIMPLIFIED)
+      // Best for: Natural clustering, showing network structure
+      // Time Complexity: O(n) for this simplified version
+      // Use case: When network topology and clustering are important
+      // 
+      // NOTE: Real force-directed algorithms use iterative physics simulation
+      // with spring forces (attraction) and electrical forces (repulsion)
+      // This is a simplified random placement with some clustering logic
+      // ==========================================
+      
       filteredNodes.forEach((node, i) => {
+        // Start with circular distribution as base
         const angle = (i / filteredNodes.length) * 2 * Math.PI;
-        const radius = Math.min(width, height) * 0.3;
+        const baseRadius = Math.min(width, height) * 0.3;
+        
+        // Apply risk-based clustering: higher risk nodes cluster toward center
+        const riskFactor = 1 - (node.risk * 0.5); // Risk adjustment factor [0.5, 1.0]
+        const radius = baseRadius * riskFactor;
+        
+        // Add some randomness to create more natural-looking clusters
+        const randomOffset = (Math.random() - 0.5) * 100;
+        
         positions.set(node.id, {
-          x: width / 2 + Math.cos(angle) * radius + (Math.random() - 0.5) * 100,
-          y: height / 2 + Math.sin(angle) * radius + (Math.random() - 0.5) * 100
+          x: width / 2 + Math.cos(angle) * radius + randomOffset,
+          y: height / 2 + Math.sin(angle) * radius + randomOffset
         });
       });
     }
