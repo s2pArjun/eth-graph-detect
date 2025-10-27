@@ -36,7 +36,7 @@ export class FraudDetectionAnalyzer {
 
     constructor(transactions: Transaction[]) {
         this.transactions = transactions;
-        this.graph = new Graph({ type: 'directed' });
+        this.graph = new Graph({ type: 'directed', multi: true });
         this.buildGraph();
     }
 
