@@ -73,19 +73,35 @@ const DataUpload: React.FC<DataUploadProps> = ({ onDataUpload }) => {
     }
   };
 
-  const handleAnalyze = () => {
-    if (csvPreview) {
-      // Generate mock full dataset
-      const mockData = Array.from({ length: 1000 }, (_, i) => ({
-        from_address: `0x${Math.random().toString(16).substr(2, 40)}`,
-        to_address: `0x${Math.random().toString(16).substr(2, 40)}`,
-        value: (Math.random() * 1000).toFixed(4),
-        timestamp: new Date(Date.now() - Math.random() * 86400000 * 30).toISOString(),
-        block_number: Math.floor(Math.random() * 1000000),
-        gas_price: (Math.random() * 100).toFixed(2)
-      }));
+  const handleAnalyze = async () => {
+    if (!uploadedFile) return;
+    
+    setUploadStatus('processing');
+    
+    try {
+      // Read the ENTIRE file, not just preview
+      const text = await uploadedFile.text();
+      const lines = text.split('\n').filter(line => line.trim());
+      const headers = lines[0].split(',').map(h => h.trim());
       
-      onDataUpload(mockData);
+      // Parse ALL rows (not just first 5)
+      const allData = lines.slice(1).map(line => {
+        const values = line.split(',').map(v => v.trim());
+        const row: any = {};
+        headers.forEach((header, index) => {
+          row[header] = values[index] || '';
+        });
+        return row;
+      });
+      
+      console.log(`Passing ${allData.length} real transactions to analysis`);
+      
+      // Pass REAL data to analysis
+      onDataUpload(allData);
+      
+    } catch (error) {
+      console.error('Error reading full CSV:', error);
+      setUploadStatus('error');
     }
   };
 
