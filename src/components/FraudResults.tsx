@@ -33,9 +33,10 @@ interface FraudDetectionResults {
 
 interface FraudResultsProps {
   results: FraudDetectionResults;
+  detailedMetrics: any[];
 }
 
-const FraudResults: React.FC<FraudResultsProps> = ({ results }) => {
+const FraudResults: React.FC<FraudResultsProps> = ({ results, detailedMetrics }) => {
   const [selectedAddress, setSelectedAddress] = useState<string | null>(null);
 
   const getRiskBadgeVariant = (risk: number) => {
@@ -81,6 +82,35 @@ const FraudResults: React.FC<FraudResultsProps> = ({ results }) => {
     URL.revokeObjectURL(url);
   };
 
+  const exportSuspiciousNodesCSV = () => {
+    // Filter only suspicious nodes (micro_score >= 0.6)
+    const suspiciousMetrics = detailedMetrics.filter(m => m.micro_score >= 0.6);
+    
+    // Create CSV header
+    const headers = ['wallet_address', 'degree', 'pagerank', 'tx_entropy', 'micro_score', 'tx_freq'];
+    const csvContent = [
+      headers.join(','),
+      ...suspiciousMetrics.map(metric => 
+        [
+          metric.wallet_address,
+          metric.degree,
+          metric.pagerank.toFixed(6),
+          metric.tx_entropy.toFixed(6),
+          metric.micro_score.toFixed(6),
+          metric.tx_freq
+        ].join(',')
+      )
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `suspicious-nodes-${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="space-y-6">
       {/* Summary Alert */}
@@ -96,7 +126,11 @@ const FraudResults: React.FC<FraudResultsProps> = ({ results }) => {
       <div className="flex items-center gap-4">
         <Button onClick={exportResults} variant="outline" className="flex items-center gap-2">
           <Download className="h-4 w-4" />
-          Export Results
+          Export Full Results (JSON)
+        </Button>
+        <Button onClick={exportSuspiciousNodesCSV} variant="outline" className="flex items-center gap-2">
+          <Download className="h-4 w-4" />
+          Download Suspicious Nodes (CSV)
         </Button>
         <Button variant="outline" className="flex items-center gap-2">
           <RefreshCw className="h-4 w-4" />

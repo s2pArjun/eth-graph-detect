@@ -47,6 +47,7 @@ const FraudDetectionDashboard: React.FC = () => {
   const [graphData, setGraphData] = useState<GraphData | null>(null);
   const [fraudResults, setFraudResults] = useState<FraudDetectionResults | null>(null);
   const [csvData, setCsvData] = useState<any[]>([]);
+  const [detailedMetrics, setDetailedMetrics] = useState<any[]>([]);
 
   const handleDataUpload = useCallback((data: any[]) => {
     setCsvData(data);
@@ -78,9 +79,10 @@ const FraudDetectionDashboard: React.FC = () => {
       if (stage.stage === "analysis") {
         try {
           // Run the real fraud detection analysis
-          const { fraudResults: realResults, graphData: realGraphData } = analyzeFraudData(data);
+          const { fraudResults: realResults, graphData: realGraphData, detailedMetrics: metrics } = analyzeFraudData(data);
           setGraphData(realGraphData);
           setFraudResults(realResults);
+          setDetailedMetrics(metrics);
         } catch (error) {
           console.error("Error during fraud analysis:", error);
         }
@@ -251,7 +253,7 @@ const FraudDetectionDashboard: React.FC = () => {
           </TabsContent>
 
           <TabsContent value="results" className="space-y-6">
-            {fraudResults && <FraudResults results={fraudResults} />}
+            {fraudResults && <FraudResults results={fraudResults} detailedMetrics={detailedMetrics} />}
           </TabsContent>
         </Tabs>
       </div>

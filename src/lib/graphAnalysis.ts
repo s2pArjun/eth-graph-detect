@@ -252,7 +252,7 @@ export class FraudDetectionAnalyzer {
         return Math.min(score, 1.0);
     }
 
-    analyze(): { fraudResults: FraudAnalysisResults; graphData: GraphData } {
+    analyze(): { fraudResults: FraudAnalysisResults; graphData: GraphData; detailedMetrics: any[] } {
         console.log('Starting real fraud analysis...');
 
         // Calculate PageRank
@@ -267,16 +267,36 @@ export class FraudDetectionAnalyzer {
         // Calculate risk scores for all nodes
         const highRiskNodes: Array<{ address: string; risk: number; reason: string }> = [];
         const nodes: Array<{ id: string; label: string; risk: number; pagerank: number }> = [];
+        const detailedMetrics: any[] = [];
 
         this.graph.forEachNode((address) => {
             const risk = this.calculateMicroScore(address, pagerankScores, cycles);
             const pagerank = pagerankScores[address] || 0;
+            const inDegree = this.graph.inDegree(address);
+            const outDegree = this.graph.outDegree(address);
+            const degree = inDegree + outDegree;
+            const entropy = this.calculateTransactionEntropy(address);
+            
+            // Calculate transaction frequency (number of transactions)
+            const txFreq = this.graph.degree(address);
 
             nodes.push({
                 id: address,
                 label: `${address.slice(0, 6)}...${address.slice(-4)}`,
                 risk,
                 pagerank
+            });
+
+            // Store detailed metrics for ALL nodes (for CSV export)
+            detailedMetrics.push({
+                wallet_address: address,
+                degree: degree,
+                pagerank: pagerank,
+                tx_entropy: entropy,
+                micro_score: risk,
+                tx_freq: txFreq,
+                in_degree: inDegree,
+                out_degree: outDegree
             });
 
             // Flag high-risk nodes
@@ -337,7 +357,7 @@ export class FraudDetectionAnalyzer {
             sccs: sccs.length
         });
 
-        return { fraudResults, graphData };
+        return { fraudResults, graphData, detailedMetrics };
     }
 }
 
@@ -345,3 +365,4 @@ export function analyzeFraudData(transactions: Transaction[]) {
     const analyzer = new FraudDetectionAnalyzer(transactions);
     return analyzer.analyze();
 }
+
