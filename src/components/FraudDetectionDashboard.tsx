@@ -80,111 +80,53 @@ const FraudDetectionDashboard: React.FC = () => {
       });
     }
 
-    // Generate real results from CSV data
-    generateRealResults();
+    // Generate mock results
+    generateMockResults();
     setActiveTab("visualization");
   };
 
-  const generateRealResults = () => {
-    // Process actual CSV data
-    const uniqueAddresses = new Set<string>();
-    csvData.forEach(tx => {
-      if (tx.from_address) uniqueAddresses.add(tx.from_address.toLowerCase());
-      if (tx.to_address) uniqueAddresses.add(tx.to_address.toLowerCase());
-    });
+  const generateMockResults = () => {
+    // Generate mock graph data
+    const mockGraphData: GraphData = {
+      nodes: Array.from({ length: 100 }, (_, i) => ({
+        id: `0x${Math.random().toString(16).substr(2, 40)}`,
+        label: `Wallet ${i + 1}`,
+        risk: Math.random(),
+        pagerank: Math.random() * 0.01
+      })),
+      edges: Array.from({ length: 200 }, (_, i) => ({
+        source: `0x${Math.random().toString(16).substr(2, 40)}`,
+        target: `0x${Math.random().toString(16).substr(2, 40)}`,
+        value: Math.random() * 1000,
+        timestamp: new Date(Date.now() - Math.random() * 86400000 * 30).toISOString()
+      }))
+    };
 
-    // Calculate node metrics
-    const addressMetrics = new Map<string, { inDegree: number; outDegree: number; totalValue: number; transactions: number }>();
-    
-    uniqueAddresses.forEach(addr => {
-      addressMetrics.set(addr, { inDegree: 0, outDegree: 0, totalValue: 0, transactions: 0 });
-    });
-
-    csvData.forEach(tx => {
-      const from = tx.from_address?.toLowerCase();
-      const to = tx.to_address?.toLowerCase();
-      const value = parseFloat(tx.value) || 0;
-
-      if (from && addressMetrics.has(from)) {
-        const metrics = addressMetrics.get(from)!;
-        metrics.outDegree++;
-        metrics.totalValue += value;
-        metrics.transactions++;
-      }
-
-      if (to && addressMetrics.has(to)) {
-        const metrics = addressMetrics.get(to)!;
-        metrics.inDegree++;
-        metrics.totalValue += value;
-        metrics.transactions++;
-      }
-    });
-
-    // Calculate PageRank-like scores and risk
-    const nodes = Array.from(uniqueAddresses).map(addr => {
-      const metrics = addressMetrics.get(addr)!;
-      const degree = metrics.inDegree + metrics.outDegree;
-      const avgValue = metrics.totalValue / Math.max(metrics.transactions, 1);
-      
-      // Risk calculation based on unusual patterns
-      let risk = 0;
-      if (metrics.outDegree > 20) risk += 0.3; // High out-degree
-      if (metrics.inDegree > 50) risk += 0.2; // High in-degree  
-      if (degree > 100) risk += 0.3; // Very active
-      if (avgValue > 1000) risk += 0.2; // High value transactions
-      
-      return {
-        id: addr,
-        label: `${addr.substring(0, 8)}...`,
-        risk: Math.min(risk, 1),
-        pagerank: degree / uniqueAddresses.size
-      };
-    });
-
-    // Create edges from CSV data
-    const edges = csvData.map(tx => ({
-      source: tx.from_address?.toLowerCase() || '',
-      target: tx.to_address?.toLowerCase() || '',
-      value: parseFloat(tx.value) || 0,
-      timestamp: tx.timestamp || new Date().toISOString()
-    })).filter(edge => edge.source && edge.target);
-
-    // Find high-risk nodes
-    const highRiskNodes = nodes
-      .filter(node => node.risk >= 0.5)
-      .map(node => ({
-        address: node.id,
-        risk: node.risk,
-        reason: node.risk >= 0.8 ? "Multiple risk factors" : "Unusual activity pattern"
-      }));
-
-    // Simple cycle detection (look for reciprocal transactions)
-    const cycles: string[][] = [];
-    const reciprocalPairs = new Set<string>();
-    
-    edges.forEach(edge => {
-      const reverse = edges.find(e => e.source === edge.target && e.target === edge.source);
-      if (reverse && !reciprocalPairs.has(`${edge.target}-${edge.source}`)) {
-        cycles.push([edge.source, edge.target]);
-        reciprocalPairs.add(`${edge.source}-${edge.target}`);
-      }
-    });
-
-    const fraudResults: FraudDetectionResults = {
-      stronglyConnectedComponents: cycles.slice(0, 5), // Use reciprocal pairs as SCCs
-      cycles,
-      highRiskNodes,
-      pageRankScores: Object.fromEntries(nodes.map(n => [n.id, n.pagerank])),
+    // Generate mock fraud results
+    const mockFraudResults: FraudDetectionResults = {
+      stronglyConnectedComponents: [
+        [`0x${Math.random().toString(16).substr(2, 40)}`, `0x${Math.random().toString(16).substr(2, 40)}`],
+        [`0x${Math.random().toString(16).substr(2, 40)}`, `0x${Math.random().toString(16).substr(2, 40)}`]
+      ],
+      cycles: [
+        [`0x${Math.random().toString(16).substr(2, 40)}`, `0x${Math.random().toString(16).substr(2, 40)}`]
+      ],
+      highRiskNodes: Array.from({ length: 10 }, (_, i) => ({
+        address: `0x${Math.random().toString(16).substr(2, 40)}`,
+        risk: 0.7 + Math.random() * 0.3,
+        reason: ["High out-degree", "Part of SCC", "Unusual transaction pattern"][Math.floor(Math.random() * 3)]
+      })),
+      pageRankScores: {},
       stats: {
-        totalNodes: nodes.length,
-        totalEdges: edges.length,
-        suspiciousNodes: highRiskNodes.length,
-        riskScore: highRiskNodes.length / nodes.length
+        totalNodes: 100,
+        totalEdges: 200,
+        suspiciousNodes: 15,
+        riskScore: 0.68
       }
     };
 
-    setGraphData({ nodes, edges });
-    setFraudResults(fraudResults);
+    setGraphData(mockGraphData);
+    setFraudResults(mockFraudResults);
   };
 
   const getRiskBadgeVariant = (risk: number) => {

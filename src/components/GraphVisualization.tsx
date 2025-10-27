@@ -48,46 +48,18 @@ const GraphVisualization: React.FC<GraphVisualizationProps> = ({ data }) => {
     ctx.fillStyle = '#0a0a0a';
     ctx.fillRect(0, 0, width, height);
 
+    // Simple force-directed layout simulation
     const positions = new Map<string, { x: number; y: number }>();
     
-    // Apply different layout algorithms
-    if (selectedLayout === "circular") {
-      // Circular layout
-      filteredNodes.forEach((node, i) => {
-        const angle = (i / filteredNodes.length) * 2 * Math.PI;
-        const radius = Math.min(width, height) * 0.35;
-        positions.set(node.id, {
-          x: width / 2 + Math.cos(angle) * radius,
-          y: height / 2 + Math.sin(angle) * radius
-        });
+    // Initialize positions
+    filteredNodes.forEach((node, i) => {
+      const angle = (i / filteredNodes.length) * 2 * Math.PI;
+      const radius = Math.min(width, height) * 0.3;
+      positions.set(node.id, {
+        x: width / 2 + Math.cos(angle) * radius,
+        y: height / 2 + Math.sin(angle) * radius
       });
-    } else if (selectedLayout === "hierarchical") {
-      // Hierarchical layout based on risk
-      const sortedNodes = [...filteredNodes].sort((a, b) => b.risk - a.risk);
-      const layers = 4;
-      const nodesPerLayer = Math.ceil(sortedNodes.length / layers);
-      
-      sortedNodes.forEach((node, i) => {
-        const layer = Math.floor(i / nodesPerLayer);
-        const posInLayer = i % nodesPerLayer;
-        const layerNodes = Math.min(nodesPerLayer, sortedNodes.length - layer * nodesPerLayer);
-        
-        positions.set(node.id, {
-          x: (width / (layerNodes + 1)) * (posInLayer + 1),
-          y: (height / (layers + 1)) * (layer + 1)
-        });
-      });
-    } else {
-      // Force-directed layout with simple physics
-      filteredNodes.forEach((node, i) => {
-        const angle = (i / filteredNodes.length) * 2 * Math.PI;
-        const radius = Math.min(width, height) * 0.3;
-        positions.set(node.id, {
-          x: width / 2 + Math.cos(angle) * radius + (Math.random() - 0.5) * 100,
-          y: height / 2 + Math.sin(angle) * radius + (Math.random() - 0.5) * 100
-        });
-      });
-    }
+    });
 
     // Draw edges
     ctx.strokeStyle = 'rgba(59, 130, 246, 0.3)';
