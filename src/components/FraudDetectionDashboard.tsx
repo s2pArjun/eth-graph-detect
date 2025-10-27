@@ -9,6 +9,7 @@ import { Upload, Database, Network, AlertTriangle, TrendingUp, Activity, Shield,
 import DataUpload from "./DataUpload";
 import GraphVisualization from "./GraphVisualization";
 import FraudResults from "./FraudResults";
+import { analyzeFraudData } from "@/lib/graphAnalysis";
 
 interface ProcessingStatus {
   stage: string;
@@ -50,17 +51,18 @@ const FraudDetectionDashboard: React.FC = () => {
   const handleDataUpload = useCallback((data: any[]) => {
     setCsvData(data);
     setActiveTab("processing");
-    simulateProcessing();
+    processRealData(data);
   }, []);
 
-  const simulateProcessing = async () => {
+  const processRealData = async (data: any[]) => {
     const stages = [
-      { stage: "cleaning", message: "Cleaning and preprocessing data...", duration: 2000 },
-      { stage: "graph", message: "Constructing transaction graph...", duration: 3000 },
-      { stage: "analysis", message: "Running fraud detection algorithms...", duration: 4000 },
-      { stage: "visualization", message: "Generating visualizations...", duration: 2000 }
+      { stage: "cleaning", message: "Cleaning and preprocessing data...", duration: 500 },
+      { stage: "graph", message: "Constructing transaction graph...", duration: 800 },
+      { stage: "analysis", message: "Running fraud detection algorithms...", duration: 1200 },
+      { stage: "visualization", message: "Generating visualizations...", duration: 500 }
     ];
 
+    // Show progress
     for (let i = 0; i < stages.length; i++) {
       const stage = stages[i];
       setProcessingStatus({
@@ -72,6 +74,18 @@ const FraudDetectionDashboard: React.FC = () => {
 
       await new Promise(resolve => setTimeout(resolve, stage.duration));
       
+      // For the analysis stage, actually run the real analysis
+      if (stage.stage === "analysis") {
+        try {
+          // Run the real fraud detection analysis
+          const { fraudResults: realResults, graphData: realGraphData } = analyzeFraudData(data);
+          setGraphData(realGraphData);
+          setFraudResults(realResults);
+        } catch (error) {
+          console.error("Error during fraud analysis:", error);
+        }
+      }
+      
       setProcessingStatus({
         stage: stage.stage,
         progress: ((i + 1) / stages.length) * 100,
@@ -80,53 +94,7 @@ const FraudDetectionDashboard: React.FC = () => {
       });
     }
 
-    // Generate mock results
-    generateMockResults();
     setActiveTab("visualization");
-  };
-
-  const generateMockResults = () => {
-    // Generate mock graph data
-    const mockGraphData: GraphData = {
-      nodes: Array.from({ length: 100 }, (_, i) => ({
-        id: `0x${Math.random().toString(16).substr(2, 40)}`,
-        label: `Wallet ${i + 1}`,
-        risk: Math.random(),
-        pagerank: Math.random() * 0.01
-      })),
-      edges: Array.from({ length: 200 }, (_, i) => ({
-        source: `0x${Math.random().toString(16).substr(2, 40)}`,
-        target: `0x${Math.random().toString(16).substr(2, 40)}`,
-        value: Math.random() * 1000,
-        timestamp: new Date(Date.now() - Math.random() * 86400000 * 30).toISOString()
-      }))
-    };
-
-    // Generate mock fraud results
-    const mockFraudResults: FraudDetectionResults = {
-      stronglyConnectedComponents: [
-        [`0x${Math.random().toString(16).substr(2, 40)}`, `0x${Math.random().toString(16).substr(2, 40)}`],
-        [`0x${Math.random().toString(16).substr(2, 40)}`, `0x${Math.random().toString(16).substr(2, 40)}`]
-      ],
-      cycles: [
-        [`0x${Math.random().toString(16).substr(2, 40)}`, `0x${Math.random().toString(16).substr(2, 40)}`]
-      ],
-      highRiskNodes: Array.from({ length: 10 }, (_, i) => ({
-        address: `0x${Math.random().toString(16).substr(2, 40)}`,
-        risk: 0.7 + Math.random() * 0.3,
-        reason: ["High out-degree", "Part of SCC", "Unusual transaction pattern"][Math.floor(Math.random() * 3)]
-      })),
-      pageRankScores: {},
-      stats: {
-        totalNodes: 100,
-        totalEdges: 200,
-        suspiciousNodes: 15,
-        riskScore: 0.68
-      }
-    };
-
-    setGraphData(mockGraphData);
-    setFraudResults(mockFraudResults);
   };
 
   const getRiskBadgeVariant = (risk: number) => {

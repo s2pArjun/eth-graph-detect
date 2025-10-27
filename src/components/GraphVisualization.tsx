@@ -40,26 +40,141 @@ const GraphVisualization: React.FC<GraphVisualizationProps> = ({ data }) => {
     canvas.height = canvas.offsetHeight * window.devicePixelRatio;
     ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
 
-    drawGraph(ctx, canvas.offsetWidth, canvas.offsetHeight);
+    // Calculate positions based on selected layout
+    const positions = calculateLayout(canvas.offsetWidth, canvas.offsetHeight);
+    drawGraph(ctx, canvas.offsetWidth, canvas.offsetHeight, positions);
   }, [filteredNodes, filteredEdges, zoomLevel, selectedLayout]);
 
-  const drawGraph = (ctx: CanvasRenderingContext2D, width: number, height: number) => {
+  // Calculate node positions based on selected layout algorithm
+  const calculateLayout = (width: number, height: number): Map<string, { x: number; y: number }> => {
+    const positions = new Map<string, { x: number; y: number }>();
+    
+    if (selectedLayout === "circular") {
+      // Circular layout - arrange nodes in a circle
+      filteredNodes.forEach((node, i) => {
+        const angle = (i / filteredNodes.length) * 2 * Math.PI;
+        const radius = Math.min(width, height) * 0.35 * zoomLevel;
+        positions.set(node.id, {
+          x: width / 2 + Math.cos(angle) * radius,
+          y: height / 2 + Math.sin(angle) * radius
+        });
+      });
+    } else if (selectedLayout === "hierarchical") {
+      // Hierarchical layout - arrange by risk level in layers
+      const layers: { [key: number]: typeof filteredNodes } = {};
+      filteredNodes.forEach(node => {
+        const layer = Math.floor(node.risk * 4); // 5 layers (0-4)
+        if (!layers[layer]) layers[layer] = [];
+        layers[layer].push(node);
+      });
+
+      let currentY = 50;
+      const layerHeight = (height - 100) / 5;
+      
+      Object.keys(layers).sort().forEach(layerKey => {
+        const layer = layers[parseInt(layerKey)];
+        const spacing = (width - 100) / (layer.length + 1);
+        
+        layer.forEach((node, i) => {
+          positions.set(node.id, {
+            x: 50 + spacing * (i + 1),
+            y: currentY * zoomLevel
+          });
+        });
+        currentY += layerHeight;
+      });
+    } else {
+      // Force-directed layout (simplified)
+      // Start with random positions
+      filteredNodes.forEach((node, i) => {
+        const angle = Math.random() * 2 * Math.PI;
+        const radius = Math.random() * Math.min(width, height) * 0.3;
+        positions.set(node.id, {
+          x: width / 2 + Math.cos(angle) * radius * zoomLevel,
+          y: height / 2 + Math.sin(angle) * radius * zoomLevel
+        });
+      });
+
+      // Simple force simulation (few iterations for performance)
+      for (let iter = 0; iter < 50; iter++) {
+        const forces = new Map<string, { x: number; y: number }>();
+        
+        // Initialize forces
+        filteredNodes.forEach(node => {
+          forces.set(node.id, { x: 0, y: 0 });
+        });
+
+        // Repulsion between all nodes
+        filteredNodes.forEach((node1, i) => {
+          filteredNodes.forEach((node2, j) => {
+            if (i >= j) return;
+            
+            const pos1 = positions.get(node1.id)!;
+            const pos2 = positions.get(node2.id)!;
+            const dx = pos1.x - pos2.x;
+            const dy = pos1.y - pos2.y;
+            const dist = Math.sqrt(dx * dx + dy * dy) + 0.1;
+            const force = 100 / (dist * dist);
+            
+            const fx = (dx / dist) * force;
+            const fy = (dy / dist) * force;
+            
+            const f1 = forces.get(node1.id)!;
+            const f2 = forces.get(node2.id)!;
+            f1.x += fx;
+            f1.y += fy;
+            f2.x -= fx;
+            f2.y -= fy;
+          });
+        });
+
+        // Attraction along edges
+        filteredEdges.forEach(edge => {
+          const pos1 = positions.get(edge.source);
+          const pos2 = positions.get(edge.target);
+          if (!pos1 || !pos2) return;
+          
+          const dx = pos2.x - pos1.x;
+          const dy = pos2.y - pos1.y;
+          const dist = Math.sqrt(dx * dx + dy * dy) + 0.1;
+          const force = dist * 0.01;
+          
+          const fx = (dx / dist) * force;
+          const fy = (dy / dist) * force;
+          
+          const f1 = forces.get(edge.source);
+          const f2 = forces.get(edge.target);
+          if (f1) {
+            f1.x += fx;
+            f1.y += fy;
+          }
+          if (f2) {
+            f2.x -= fx;
+            f2.y -= fy;
+          }
+        });
+
+        // Apply forces
+        filteredNodes.forEach(node => {
+          const pos = positions.get(node.id)!;
+          const force = forces.get(node.id)!;
+          pos.x += force.x * 0.1;
+          pos.y += force.y * 0.1;
+          
+          // Keep within bounds
+          pos.x = Math.max(30, Math.min(width - 30, pos.x));
+          pos.y = Math.max(30, Math.min(height - 30, pos.y));
+        });
+      }
+    }
+    
+    return positions;
+  };
+
+  const drawGraph = (ctx: CanvasRenderingContext2D, width: number, height: number, positions: Map<string, { x: number; y: number }>) => {
     // Clear canvas
     ctx.fillStyle = '#0a0a0a';
     ctx.fillRect(0, 0, width, height);
-
-    // Simple force-directed layout simulation
-    const positions = new Map<string, { x: number; y: number }>();
-    
-    // Initialize positions
-    filteredNodes.forEach((node, i) => {
-      const angle = (i / filteredNodes.length) * 2 * Math.PI;
-      const radius = Math.min(width, height) * 0.3;
-      positions.set(node.id, {
-        x: width / 2 + Math.cos(angle) * radius,
-        y: height / 2 + Math.sin(angle) * radius
-      });
-    });
 
     // Draw edges
     ctx.strokeStyle = 'rgba(59, 130, 246, 0.3)';
