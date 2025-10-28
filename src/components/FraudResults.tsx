@@ -92,11 +92,25 @@ const FraudResults: React.FC<FraudResultsProps> = ({
   };
 
   const exportSuspiciousNodesCSV = () => {
-    // Filter only suspicious nodes (micro_score >= 0.6)
-    const suspiciousMetrics = detailedMetrics.filter(m => m.micro_score >= 0.6);
+    // Filter nodes above dynamic threshold
+    const suspiciousMetrics = detailedMetrics.filter(
+      m => m.micro_score >= results.stats.riskThreshold
+    );
     
-    // Create CSV header
-    const headers = ['wallet_address', 'degree', 'pagerank', 'tx_entropy', 'micro_score', 'tx_freq'];
+    // Create CSV header - FIXED to match all 10 columns
+    const headers = [
+      'wallet_address', 
+      'degree', 
+      'in_degree',
+      'out_degree',
+      'pagerank', 
+      'tx_entropy', 
+      'micro_score', 
+      'tx_freq',
+      'in_neighbors',
+      'out_neighbors'
+    ];
+    
     const csvContent = [
       headers.join(','),
       ...suspiciousMetrics.map(metric => 

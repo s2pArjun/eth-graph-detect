@@ -35,14 +35,28 @@ const GraphVisualization: React.FC<GraphVisualizationProps> = ({ data }) => {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // Set canvas size
-    canvas.width = canvas.offsetWidth * window.devicePixelRatio;
-    canvas.height = canvas.offsetHeight * window.devicePixelRatio;
-    ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+    // Check if there are nodes to display
+    if (filteredNodes.length === 0) {
+      const rect = canvas.getBoundingClientRect();
+      canvas.width = rect.width;
+      canvas.height = rect.height;
+      ctx.fillStyle = '#0a0a0a';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = '#888';
+      ctx.font = '16px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('No nodes to display', canvas.width / 2, canvas.height / 2);
+      return;
+    }
+
+    // Set canvas size - work in logical pixels
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = rect.width;
+    canvas.height = rect.height;
 
     // Calculate positions based on selected layout
-    const positions = calculateLayout(canvas.offsetWidth, canvas.offsetHeight);
-    drawGraph(ctx, canvas.offsetWidth, canvas.offsetHeight, positions);
+    const positions = calculateLayout(canvas.width, canvas.height);
+    drawGraph(ctx, canvas.width, canvas.height, positions);
   }, [filteredNodes, filteredEdges, zoomLevel, selectedLayout]);
 
   // Calculate node positions based on selected layout algorithm
@@ -161,9 +175,10 @@ const GraphVisualization: React.FC<GraphVisualizationProps> = ({ data }) => {
           pos.x += force.x * 0.1;
           pos.y += force.y * 0.1;
           
-          // Keep within bounds
-          pos.x = Math.max(30, Math.min(width - 30, pos.x));
-          pos.y = Math.max(30, Math.min(height - 30, pos.y));
+          // Keep within bounds with proper margin
+          const margin = 50;
+          pos.x = Math.max(margin, Math.min(width - margin, pos.x));
+          pos.y = Math.max(margin, Math.min(height - margin, pos.y));
         });
       }
     }
@@ -350,7 +365,11 @@ const GraphVisualization: React.FC<GraphVisualizationProps> = ({ data }) => {
               ref={canvasRef}
               onClick={handleCanvasClick}
               className="w-full h-96 border border-border rounded-lg cursor-pointer"
-              style={{ background: 'linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 100%)' }}
+              style={{ 
+                background: 'linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 100%)',
+                width: '100%',
+                height: '384px'
+              }}
             />
             
             {/* Legend */}

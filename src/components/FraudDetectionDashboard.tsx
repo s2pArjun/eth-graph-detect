@@ -82,10 +82,18 @@ const FraudDetectionDashboard: React.FC = () => {
       if (stage.stage === "analysis") {
         try {
           // Run the real fraud detection analysis
-          const { fraudResults: realResults, graphData: realGraphData, detailedMetrics: metrics } = analyzeFraudData(data);
+          const { 
+            fraudResults: realResults, 
+            graphData: realGraphData, 
+            detailedMetrics: metrics,
+            gcnGraphSuspiciousOnly: gcnSuspicious,
+            gcnGraphWithNeighbors: gcnNeighbors
+          } = analyzeFraudData(data);
           setGraphData(realGraphData);
           setFraudResults(realResults);
           setDetailedMetrics(metrics);
+          setGcnGraphSuspiciousOnly(gcnSuspicious);
+          setGcnGraphWithNeighbors(gcnNeighbors);
         } catch (error) {
           console.error("Error during fraud analysis:", error);
         }
