@@ -15,7 +15,8 @@ import {
   Eye,
   Shield,
   Users,
-  Activity
+  Activity,
+  FileJson
 } from "lucide-react";
 
 interface FraudDetectionResults {
@@ -28,15 +29,23 @@ interface FraudDetectionResults {
     totalEdges: number;
     suspiciousNodes: number;
     riskScore: number;
+    riskThreshold: number;
   };
 }
 
 interface FraudResultsProps {
   results: FraudDetectionResults;
   detailedMetrics: any[];
+  gcnGraphSuspiciousOnly?: any;
+  gcnGraphWithNeighbors?: any;
 }
 
-const FraudResults: React.FC<FraudResultsProps> = ({ results, detailedMetrics }) => {
+const FraudResults: React.FC<FraudResultsProps> = ({ 
+  results, 
+  detailedMetrics,
+  gcnGraphSuspiciousOnly,
+  gcnGraphWithNeighbors
+}) => {
   const [selectedAddress, setSelectedAddress] = useState<string | null>(null);
 
   const getRiskBadgeVariant = (risk: number) => {
@@ -94,10 +103,14 @@ const FraudResults: React.FC<FraudResultsProps> = ({ results, detailedMetrics })
         [
           metric.wallet_address,
           metric.degree,
+          metric.in_degree,
+          metric.out_degree,
           metric.pagerank.toFixed(6),
           metric.tx_entropy.toFixed(6),
           metric.micro_score.toFixed(6),
-          metric.tx_freq
+          metric.tx_freq,
+          `"${metric.in_neighbors.join(';')}"`,
+          `"${metric.out_neighbors.join(';')}"`
         ].join(',')
       )
     ].join('\n');
@@ -111,32 +124,136 @@ const FraudResults: React.FC<FraudResultsProps> = ({ results, detailedMetrics })
     URL.revokeObjectURL(url);
   };
 
+  // NEW: Export GCN-ready JSON (Suspicious nodes only)
+  const exportGCNGraphSuspiciousOnly = () => {
+    if (!gcnGraphSuspiciousOnly) {
+      alert('GCN graph data not available');
+      return;
+    }
+
+    const blob = new Blob([JSON.stringify(gcnGraphSuspiciousOnly, null, 2)], { 
+      type: 'application/json' 
+    });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `gcn-graph-suspicious-only-${new Date().toISOString().split('T')[0]}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  // NEW: Export GCN-ready JSON (With 1-hop neighbors)
+  const exportGCNGraphWithNeighbors = () => {
+    if (!gcnGraphWithNeighbors) {
+      alert('GCN graph data not available');
+      return;
+    }
+
+    const blob = new Blob([JSON.stringify(gcnGraphWithNeighbors, null, 2)], { 
+      type: 'application/json' 
+    });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `gcn-graph-with-neighbors-${new Date().toISOString().split('T')[0]}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="space-y-6">
-      {/* Summary Alert */}
+      {/* Summary Alert with Dynamic Threshold */}
       <Alert className={`border-${results.stats.riskScore >= 0.7 ? 'destructive' : results.stats.riskScore >= 0.4 ? 'warning' : 'success'}/20 bg-${results.stats.riskScore >= 0.7 ? 'destructive' : results.stats.riskScore >= 0.4 ? 'warning' : 'success'}/10`}>
         <Shield className={`h-4 w-4 text-${results.stats.riskScore >= 0.7 ? 'destructive' : results.stats.riskScore >= 0.4 ? 'warning' : 'success'}`} />
         <AlertDescription className={`text-${results.stats.riskScore >= 0.7 ? 'destructive' : results.stats.riskScore >= 0.4 ? 'warning' : 'success'}`}>
           <strong>Analysis Complete:</strong> Found {results.stats.suspiciousNodes} suspicious wallets 
           with an overall network risk score of {(results.stats.riskScore * 100).toFixed(1)}%.
+          <br />
+          <strong>Dynamic Threshold:</strong> {(results.stats.riskThreshold * 100).toFixed(2)}% 
+          (based on average risk across all nodes)
         </AlertDescription>
       </Alert>
 
       {/* Action Buttons */}
-      <div className="flex items-center gap-4">
+      <div className="flex flex-wrap items-center gap-4">
         <Button onClick={exportResults} variant="outline" className="flex items-center gap-2">
           <Download className="h-4 w-4" />
           Export Full Results (JSON)
         </Button>
+        
         <Button onClick={exportSuspiciousNodesCSV} variant="outline" className="flex items-center gap-2">
           <Download className="h-4 w-4" />
           Download Suspicious Nodes (CSV)
         </Button>
-        <Button variant="outline" className="flex items-center gap-2">
-          <RefreshCw className="h-4 w-4" />
-          Re-analyze
+
+        <div className="h-6 w-px bg-border" />
+
+        <Button 
+          onClick={exportGCNGraphSuspiciousOnly} 
+          variant="default" 
+          className="flex items-center gap-2 bg-primary"
+        >
+          <FileJson className="h-4 w-4" />
+          GCN Graph (Suspicious Only)
+        </Button>
+        
+        <Button 
+          onClick={exportGCNGraphWithNeighbors} 
+          variant="default" 
+          className="flex items-center gap-2 bg-accent"
+        >
+          <FileJson className="h-4 w-4" />
+          GCN Graph (With Neighbors)
         </Button>
       </div>
+
+      {/* GCN Export Info */}
+      {gcnGraphSuspiciousOnly && gcnGraphWithNeighbors && (
+        <Card className="bg-gradient-card border-border shadow-card">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Network className="h-5 w-5 text-primary" />
+              GCN Graph Export Options
+            </CardTitle>
+            <CardDescription>
+              Two graph structures available for Graph Convolutional Network training
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="p-4 border border-primary/20 rounded-lg bg-primary/5">
+                <div className="flex items-center gap-2 mb-2">
+                  <Badge variant="default">Option 1</Badge>
+                  <h4 className="font-medium">Suspicious Only</h4>
+                </div>
+                <p className="text-sm text-muted-foreground mb-3">
+                  Contains only nodes above risk threshold and edges between them
+                </p>
+                <div className="space-y-1 text-xs">
+                  <p>• Nodes: <strong>{gcnGraphSuspiciousOnly.nodes.length}</strong></p>
+                  <p>• Edges: <strong>{gcnGraphSuspiciousOnly.edges.length}</strong></p>
+                  <p>• Best for: Focused fraud pattern detection</p>
+                </div>
+              </div>
+
+              <div className="p-4 border border-accent/20 rounded-lg bg-accent/5">
+                <div className="flex items-center gap-2 mb-2">
+                  <Badge variant="secondary">Option 2</Badge>
+                  <h4 className="font-medium">With 1-Hop Neighbors</h4>
+                </div>
+                <p className="text-sm text-muted-foreground mb-3">
+                  Includes suspicious nodes + their immediate neighbors (more context)
+                </p>
+                <div className="space-y-1 text-xs">
+                  <p>• Nodes: <strong>{gcnGraphWithNeighbors.nodes.length}</strong></p>
+                  <p>• Edges: <strong>{gcnGraphWithNeighbors.edges.length}</strong></p>
+                  <p>• Best for: Capturing neighborhood patterns</p>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <Tabs defaultValue="high-risk" className="space-y-6">
         <TabsList className="grid w-full grid-cols-4 bg-secondary/50">
@@ -172,7 +289,7 @@ const FraudResults: React.FC<FraudResultsProps> = ({ results, detailedMetrics })
                 </Badge>
               </CardTitle>
               <CardDescription>
-                Wallets flagged by multiple fraud detection algorithms
+                Wallets flagged above dynamic threshold ({(results.stats.riskThreshold * 100).toFixed(2)}%)
               </CardDescription>
             </CardHeader>
             <CardContent>

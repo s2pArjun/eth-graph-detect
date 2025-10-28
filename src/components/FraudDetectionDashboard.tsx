@@ -33,6 +33,7 @@ interface FraudDetectionResults {
     totalEdges: number;
     suspiciousNodes: number;
     riskScore: number;
+    riskThreshold: number;
   };
 }
 
@@ -48,6 +49,8 @@ const FraudDetectionDashboard: React.FC = () => {
   const [fraudResults, setFraudResults] = useState<FraudDetectionResults | null>(null);
   const [csvData, setCsvData] = useState<any[]>([]);
   const [detailedMetrics, setDetailedMetrics] = useState<any[]>([]);
+  const [gcnGraphSuspiciousOnly, setGcnGraphSuspiciousOnly] = useState<any>(null);
+  const [gcnGraphWithNeighbors, setGcnGraphWithNeighbors] = useState<any>(null);
 
   const handleDataUpload = useCallback((data: any[]) => {
     setCsvData(data);
@@ -136,7 +139,7 @@ const FraudDetectionDashboard: React.FC = () => {
 
         {/* Status Overview */}
         {fraudResults && (
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
             <Card className="bg-gradient-card border-border shadow-card">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
@@ -177,7 +180,23 @@ const FraudDetectionDashboard: React.FC = () => {
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-muted-foreground">Risk Score</p>
+                    <p className="text-sm text-muted-foreground">Risk Threshold</p>
+                    <p className="text-2xl font-bold">
+                      <Badge variant="secondary">
+                        {(fraudResults.stats.riskThreshold * 100).toFixed(1)}%
+                      </Badge>
+                    </p>
+                  </div>
+                  <Activity className="h-8 w-8 text-primary" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-gradient-card border-border shadow-card">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Avg Risk Score</p>
                     <p className="text-2xl font-bold">
                       <Badge variant={getRiskBadgeVariant(fraudResults.stats.riskScore)}>
                         {(fraudResults.stats.riskScore * 100).toFixed(1)}%
@@ -253,7 +272,14 @@ const FraudDetectionDashboard: React.FC = () => {
           </TabsContent>
 
           <TabsContent value="results" className="space-y-6">
-            {fraudResults && <FraudResults results={fraudResults} detailedMetrics={detailedMetrics} />}
+            {fraudResults && (
+              <FraudResults 
+                results={fraudResults} 
+                detailedMetrics={detailedMetrics}
+                gcnGraphSuspiciousOnly={gcnGraphSuspiciousOnly}
+                gcnGraphWithNeighbors={gcnGraphWithNeighbors}
+              />
+            )}
           </TabsContent>
         </Tabs>
       </div>

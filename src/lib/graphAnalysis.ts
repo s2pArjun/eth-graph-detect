@@ -22,12 +22,39 @@ interface FraudAnalysisResults {
         totalEdges: number;
         suspiciousNodes: number;
         riskScore: number;
+        riskThreshold: number; // NEW: Dynamic threshold
     };
 }
 
 interface GraphData {
     nodes: Array<{ id: string; label: string; risk: number; pagerank: number }>;
     edges: Array<{ source: string; target: string; value: number; timestamp: string }>;
+}
+
+interface GCNGraphData {
+    nodes: Array<{
+        id: string;
+        features: {
+            degree: number;
+            in_degree: number;
+            out_degree: number;
+            pagerank: number;
+            tx_entropy: number;
+            micro_score: number;
+            tx_freq: number;
+        };
+    }>;
+    edges: Array<{
+        source: string;
+        target: string;
+        weight: number;
+        timestamp?: string;
+    }>;
+    metadata: {
+        total_suspicious_nodes: number;
+        risk_threshold: number;
+        include_neighbors: boolean;
+    };
 }
 
 export class FraudDetectionAnalyzer {
@@ -218,7 +245,6 @@ export class FraudDetectionAnalyzer {
     ): number {
         let score = 0;
 
-        // Factor 1: Normalized degree (30%)
         const inDegree = this.graph.inDegree(address);
         const outDegree = this.graph.outDegree(address);
         const totalDegree = inDegree + outDegree;
@@ -231,19 +257,16 @@ export class FraudDetectionAnalyzer {
             score += (totalDegree / maxDegree) * 0.3;
         }
 
-        // Factor 2: PageRank (30%)
         const maxPageRank = Math.max(...Object.values(pagerankScores));
         if (maxPageRank > 0) {
             score += ((pagerankScores[address] || 0) / maxPageRank) * 0.3;
         }
 
-        // Factor 3: Degree imbalance (20%)
         if (totalDegree > 0) {
             const imbalance = Math.abs(inDegree - outDegree) / totalDegree;
             score += imbalance * 0.2;
         }
 
-        // Factor 4: Part of cycle (20%)
         const isInCycle = cycles.some(cycle => cycle.includes(address));
         if (isInCycle) {
             score += 0.2;
@@ -252,23 +275,109 @@ export class FraudDetectionAnalyzer {
         return Math.min(score, 1.0);
     }
 
-    analyze(): { fraudResults: FraudAnalysisResults; graphData: GraphData; detailedMetrics: any[] } {
-        console.log('Starting real fraud analysis...');
+    // NEW: Extract neighbors for a given node
+    getNeighbors(address: string): { in_neighbors: string[], out_neighbors: string[] } {
+        const in_neighbors: string[] = [];
+        const out_neighbors: string[] = [];
 
-        // Calculate PageRank
+        try {
+            this.graph.forEachInNeighbor(address, (neighbor) => {
+                in_neighbors.push(neighbor);
+            });
+        } catch (e) { }
+
+        try {
+            this.graph.forEachOutNeighbor(address, (neighbor) => {
+                out_neighbors.push(neighbor);
+            });
+        } catch (e) { }
+
+        return { in_neighbors, out_neighbors };
+    }
+
+    // NEW: Build GCN-ready graph structure
+    buildGCNGraph(suspiciousNodes: Set<string>, includeNeighbors: boolean = false): GCNGraphData {
+        const nodesToInclude = new Set<string>(suspiciousNodes);
+
+        // Option to include 1-hop neighbors
+        if (includeNeighbors) {
+            suspiciousNodes.forEach(node => {
+                const { in_neighbors, out_neighbors } = this.getNeighbors(node);
+                in_neighbors.forEach(n => nodesToInclude.add(n));
+                out_neighbors.forEach(n => nodesToInclude.add(n));
+            });
+        }
+
+        const nodes: GCNGraphData['nodes'] = [];
+        const edges: GCNGraphData['edges'] = [];
         const pagerankScores = this.calculatePageRank();
-
-        // Detect cycles
         const cycles = this.detectCycles();
 
-        // Find SCCs
+        // Extract node features
+        nodesToInclude.forEach(address => {
+            const inDegree = this.graph.inDegree(address);
+            const outDegree = this.graph.outDegree(address);
+            const degree = inDegree + outDegree;
+            const pagerank = pagerankScores[address] || 0;
+            const entropy = this.calculateTransactionEntropy(address);
+            const microScore = this.calculateMicroScore(address, pagerankScores, cycles);
+            const txFreq = this.graph.degree(address);
+
+            nodes.push({
+                id: address,
+                features: {
+                    degree,
+                    in_degree: inDegree,
+                    out_degree: outDegree,
+                    pagerank,
+                    tx_entropy: entropy,
+                    micro_score: microScore,
+                    tx_freq: txFreq
+                }
+            });
+        });
+
+        // Extract edges between included nodes
+        this.graph.forEachEdge((edge, attrs, source, target) => {
+            if (nodesToInclude.has(source) && nodesToInclude.has(target)) {
+                edges.push({
+                    source,
+                    target,
+                    weight: attrs.value,
+                    timestamp: attrs.timestamp
+                });
+            }
+        });
+
+        return {
+            nodes,
+            edges,
+            metadata: {
+                total_suspicious_nodes: suspiciousNodes.size,
+                risk_threshold: 0, // Will be set by caller
+                include_neighbors: includeNeighbors
+            }
+        };
+    }
+
+    analyze(): { 
+        fraudResults: FraudAnalysisResults; 
+        graphData: GraphData; 
+        detailedMetrics: any[];
+        gcnGraphWithNeighbors: GCNGraphData;
+        gcnGraphSuspiciousOnly: GCNGraphData;
+    } {
+        console.log('Starting real fraud analysis...');
+
+        const pagerankScores = this.calculatePageRank();
+        const cycles = this.detectCycles();
         const sccs = this.findStronglyConnectedComponents();
 
-        // Calculate risk scores for all nodes
         const highRiskNodes: Array<{ address: string; risk: number; reason: string }> = [];
         const nodes: Array<{ id: string; label: string; risk: number; pagerank: number }> = [];
         const detailedMetrics: any[] = [];
 
+        // Calculate risk scores for ALL nodes
         this.graph.forEachNode((address) => {
             const risk = this.calculateMicroScore(address, pagerankScores, cycles);
             const pagerank = pagerankScores[address] || 0;
@@ -276,9 +385,8 @@ export class FraudDetectionAnalyzer {
             const outDegree = this.graph.outDegree(address);
             const degree = inDegree + outDegree;
             const entropy = this.calculateTransactionEntropy(address);
-            
-            // Calculate transaction frequency (number of transactions)
             const txFreq = this.graph.degree(address);
+            const { in_neighbors, out_neighbors } = this.getNeighbors(address);
 
             nodes.push({
                 id: address,
@@ -287,40 +395,62 @@ export class FraudDetectionAnalyzer {
                 pagerank
             });
 
-            // Store detailed metrics for ALL nodes (for CSV export)
             detailedMetrics.push({
                 wallet_address: address,
                 degree: degree,
+                in_degree: inDegree,
+                out_degree: outDegree,
                 pagerank: pagerank,
                 tx_entropy: entropy,
                 micro_score: risk,
                 tx_freq: txFreq,
-                in_degree: inDegree,
-                out_degree: outDegree
+                in_neighbors: in_neighbors,
+                out_neighbors: out_neighbors
             });
+        });
 
-            // Flag high-risk nodes
-            if (risk >= 0.6) {
+        // NEW: Calculate DYNAMIC threshold based on average risk
+        const avgRisk = nodes.reduce((sum, n) => sum + n.risk, 0) / nodes.length;
+        const riskThreshold = avgRisk; // Use average as threshold
+
+        console.log(`📊 Dynamic Risk Threshold: ${(riskThreshold * 100).toFixed(2)}%`);
+
+        // Filter high-risk nodes using dynamic threshold
+        const suspiciousNodeSet = new Set<string>();
+        
+        this.graph.forEachNode((address) => {
+            const risk = this.calculateMicroScore(address, pagerankScores, cycles);
+            
+            if (risk >= riskThreshold) {
+                suspiciousNodeSet.add(address);
+                
                 const reasons: string[] = [];
-
                 const inDegree = this.graph.inDegree(address);
                 const outDegree = this.graph.outDegree(address);
                 const totalDegree = inDegree + outDegree;
 
                 if (totalDegree > 5) reasons.push('High transaction degree');
-                if (pagerank > 0.02) reasons.push('High PageRank (influential)');
+                if (pagerankScores[address] > 0.02) reasons.push('High PageRank (influential)');
                 if (cycles.some(c => c.includes(address))) reasons.push('Part of cycle');
                 if (Math.abs(inDegree - outDegree) > 3) reasons.push('Unusual in/out ratio');
+                if (risk >= riskThreshold * 1.5) reasons.push('Significantly above average risk');
 
                 highRiskNodes.push({
                     address,
                     risk,
-                    reason: reasons.join(', ') || 'Anomalous behavior'
+                    reason: reasons.join(', ') || 'Above average risk threshold'
                 });
             }
         });
 
-        // Prepare edges
+        // Build GCN graphs - Two versions
+        const gcnGraphSuspiciousOnly = this.buildGCNGraph(suspiciousNodeSet, false);
+        const gcnGraphWithNeighbors = this.buildGCNGraph(suspiciousNodeSet, true);
+        
+        gcnGraphSuspiciousOnly.metadata.risk_threshold = riskThreshold;
+        gcnGraphWithNeighbors.metadata.risk_threshold = riskThreshold;
+
+        // Prepare edges for visualization
         const edges: Array<{ source: string; target: string; value: number; timestamp: string }> = [];
         this.graph.forEachEdge((edge, attrs, source, target) => {
             edges.push({
@@ -331,9 +461,6 @@ export class FraudDetectionAnalyzer {
             });
         });
 
-        // Calculate statistics
-        const avgRisk = nodes.reduce((sum, n) => sum + n.risk, 0) / nodes.length;
-
         const fraudResults: FraudAnalysisResults = {
             stronglyConnectedComponents: sccs,
             cycles,
@@ -343,21 +470,31 @@ export class FraudDetectionAnalyzer {
                 totalNodes: this.graph.order,
                 totalEdges: this.graph.size,
                 suspiciousNodes: highRiskNodes.length,
-                riskScore: avgRisk
+                riskScore: avgRisk,
+                riskThreshold: riskThreshold
             }
         };
 
         const graphData: GraphData = { nodes, edges };
 
-        console.log('Analysis complete:', {
+        console.log('✅ Analysis complete:', {
             nodes: fraudResults.stats.totalNodes,
             edges: fraudResults.stats.totalEdges,
             suspicious: fraudResults.stats.suspiciousNodes,
+            threshold: `${(riskThreshold * 100).toFixed(2)}%`,
             cycles: cycles.length,
-            sccs: sccs.length
+            sccs: sccs.length,
+            gcnNodesOnly: gcnGraphSuspiciousOnly.nodes.length,
+            gcnNodesWithNeighbors: gcnGraphWithNeighbors.nodes.length
         });
 
-        return { fraudResults, graphData, detailedMetrics };
+        return { 
+            fraudResults, 
+            graphData, 
+            detailedMetrics,
+            gcnGraphSuspiciousOnly,
+            gcnGraphWithNeighbors
+        };
     }
 }
 
