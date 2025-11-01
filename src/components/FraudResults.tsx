@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useToast } from "@/hooks/use-toast";
 import { 
   AlertTriangle, 
   TrendingUp, 
@@ -47,6 +48,9 @@ const FraudResults: React.FC<FraudResultsProps> = ({
   gcnGraphWithNeighbors
 }) => {
   const [selectedAddress, setSelectedAddress] = useState<string | null>(null);
+  const [gcnResults, setGcnResults] = useState<any>(null);
+  const [gcnLoading, setGcnLoading] = useState(false);
+  const { toast } = useToast();
 
   const getRiskBadgeVariant = (risk: number) => {
     if (risk >= 0.8) return "destructive";
@@ -159,7 +163,11 @@ const FraudResults: React.FC<FraudResultsProps> = ({
   // NEW: Export GCN-ready JSON (With 1-hop neighbors)
   const exportGCNGraphWithNeighbors = () => {
     if (!gcnGraphWithNeighbors) {
-      alert('GCN graph data not available');
+      toast({
+        title: "Error",
+        description: "GCN graph data not available",
+        variant: "destructive"
+      });
       return;
     }
 
@@ -172,6 +180,54 @@ const FraudResults: React.FC<FraudResultsProps> = ({
     link.download = `gcn-graph-with-neighbors-${new Date().toISOString().split('T')[0]}.json`;
     link.click();
     URL.revokeObjectURL(url);
+  };
+
+  const runGCNAnalysis = async () => {
+    if (!gcnGraphWithNeighbors) {
+      toast({
+        title: "Error",
+        description: "GCN graph data not available. Please run analysis first.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setGcnLoading(true);
+    
+    try {
+      const response = await fetch('http://localhost:5000/api/run-gcn', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(gcnGraphWithNeighbors)
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        setGcnResults(result);
+        toast({
+          title: "✅ GCN Analysis Complete!",
+          description: `Fraud: ${result.summary.fraudPredicted} | Clean: ${result.summary.cleanPredicted}`,
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: result.error || "GCN analysis failed",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error('GCN API Error:', error);
+      toast({
+        title: "Connection Error",
+        description: "Failed to connect to GCN backend. Make sure Python server is running on port 5000.",
+        variant: "destructive"
+      });
+    } finally {
+      setGcnLoading(false);
+    }
   };
 
   return (
@@ -219,6 +275,33 @@ const FraudResults: React.FC<FraudResultsProps> = ({
           <FileJson className="h-4 w-4" />
           GCN Graph (With Neighbors)
         </Button>
+
+        <div className="h-6 w-px bg-border" />
+
+        <Button 
+          onClick={runGCNAnalysis}
+          disabled={gcnLoading || !gcnGraphWithNeighbors}
+          variant="default" 
+          className="flex items-center gap-2"
+        >
+          {gcnLoading ? (
+            <>
+              <Activity className="h-4 w-4 animate-spin" />
+              Running GCN...
+            </>
+          ) : (
+            <>
+              <Shield className="h-4 w-4" />
+              Run GCN Analysis
+            </>
+          )}
+        </Button>
+
+        {gcnResults && (
+          <Badge variant="default" className="bg-success">
+            GCN Complete: {gcnResults.summary.fraudPredicted} fraud detected
+          </Badge>
+        )}
       </div>
 
       {/* GCN Export Info */}
@@ -264,6 +347,97 @@ const FraudResults: React.FC<FraudResultsProps> = ({
                   <p>• Best for: Capturing neighborhood patterns</p>
                 </div>
               </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* GCN Analysis Results */}
+      {gcnResults && (
+        <Card className="bg-gradient-card border-border shadow-card">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Shield className="h-5 w-5 text-success" />
+              GCN Analysis Results
+            </CardTitle>
+            <CardDescription>
+              Machine learning predictions using Graph Convolutional Network
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+              <div className="p-4 border border-border rounded-lg">
+                <p className="text-sm text-muted-foreground">Training Data</p>
+                <p className="text-2xl font-bold">
+                  {gcnResults.summary.labeledFraud + gcnResults.summary.labeledClean}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {gcnResults.summary.labeledFraud} fraud + {gcnResults.summary.labeledClean} clean
+                </p>
+              </div>
+              
+              <div className="p-4 border border-destructive/20 rounded-lg bg-destructive/5">
+                <p className="text-sm text-muted-foreground">Predicted FRAUD</p>
+                <p className="text-2xl font-bold text-destructive">
+                  {gcnResults.summary.fraudPredicted}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {((gcnResults.summary.fraudPredicted / gcnResults.summary.totalNodes) * 100).toFixed(1)}% of total
+                </p>
+              </div>
+              
+              <div className="p-4 border border-success/20 rounded-lg bg-success/5">
+                <p className="text-sm text-muted-foreground">Predicted CLEAN</p>
+                <p className="text-2xl font-bold text-success">
+                  {gcnResults.summary.cleanPredicted}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {((gcnResults.summary.cleanPredicted / gcnResults.summary.totalNodes) * 100).toFixed(1)}% of total
+                </p>
+              </div>
+            </div>
+            
+            {/* Top Predictions */}
+            <div className="space-y-2">
+              <h4 className="font-medium text-sm">Top GCN Predictions:</h4>
+              <ScrollArea className="h-64">
+                {gcnResults.results
+                  .sort((a: any, b: any) => b.gcnProbability - a.gcnProbability)
+                  .slice(0, 10)
+                  .map((result: any, index: number) => (
+                    <div key={index} className="flex items-center justify-between p-2 border-b border-border/50">
+                      <code className="text-xs font-mono">{result.address.slice(0, 15)}...</code>
+                      <div className="flex items-center gap-2">
+                        <Badge variant={result.prediction === 'FRAUD' ? 'destructive' : 'default'}>
+                          {result.prediction}
+                        </Badge>
+                        <span className="text-xs text-muted-foreground">
+                          {(result.gcnProbability * 100).toFixed(1)}%
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+              </ScrollArea>
+            </div>
+            
+            {/* Download GCN Results */}
+            <div className="mt-4">
+              <Button 
+                onClick={() => {
+                  const blob = new Blob([JSON.stringify(gcnResults, null, 2)], { type: 'application/json' });
+                  const url = URL.createObjectURL(blob);
+                  const link = document.createElement('a');
+                  link.href = url;
+                  link.download = `gcn-results-${new Date().toISOString().split('T')[0]}.json`;
+                  link.click();
+                  URL.revokeObjectURL(url);
+                }}
+                variant="outline"
+                className="w-full"
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Download GCN Results JSON
+              </Button>
             </div>
           </CardContent>
         </Card>
