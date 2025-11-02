@@ -5,8 +5,8 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Upload, FileText, CheckCircle, AlertCircle, Database, Info, Wifi, Key, HelpCircle } from "lucide-react";
-import { fetchLatestTransactions, validateApiKey, getApiKeyInstructions } from "@/lib/etherscanAPI";
+import { Upload, FileText, CheckCircle, AlertCircle, Database, Info, Wifi } from "lucide-react";
+import { fetchLatestTransactions, validateApiKey } from "@/lib/etherscanAPI";
 
 interface DataUploadProps {
   onDataUpload: (data: any[]) => void;
@@ -20,11 +20,9 @@ const DataUpload: React.FC<DataUploadProps> = ({ onDataUpload }) => {
   const [errorMessage, setErrorMessage] = useState<string>('');
 
   // Etherscan API state
-  const [apiKey, setApiKey] = useState<string>('');
-  const [isValidatingKey, setIsValidatingKey] = useState(false);
+  const [apiKey] = useState<string>('JYX1K3WV1RIQ99RDYD6S8WDF21U7Q3UGGA');
   const [isFetchingLive, setIsFetchingLive] = useState(false);
   const [liveDataPreview, setLiveDataPreview] = useState<any[] | null>(null);
-  const [showApiInstructions, setShowApiInstructions] = useState(false);
 
   const handleDrag = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -120,12 +118,7 @@ const DataUpload: React.FC<DataUploadProps> = ({ onDataUpload }) => {
 
   // Fetch live transactions from Etherscan
   const handleFetchLiveTransactions = async () => {
-    if (!apiKey.trim()) {
-      setUploadStatus('error');
-      setErrorMessage('Please enter your Etherscan API key');
-      return;
-    }
-
+    // API key is hardcoded, no need to check
     setIsFetchingLive(true);
     setUploadStatus('processing');
     setErrorMessage('');
@@ -363,45 +356,10 @@ const DataUpload: React.FC<DataUploadProps> = ({ onDataUpload }) => {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              {/* API Key Input */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <label className="text-sm font-medium flex items-center gap-2">
-                    <Key className="h-4 w-4" />
-                    Etherscan API Key
-                  </label>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setShowApiInstructions(!showApiInstructions)}
-                  >
-                    <HelpCircle className="h-4 w-4 mr-1" />
-                    How to get API key?
-                  </Button>
-                </div>
-                
-                <Input
-                  type="password"
-                  placeholder="Enter your Etherscan API key"
-                  value={apiKey}
-                  onChange={(e) => setApiKey(e.target.value)}
-                  className="font-mono"
-                />
-
-                {showApiInstructions && (
-                  <Alert className="border-accent/20 bg-accent/10">
-                    <Info className="h-4 w-4 text-accent" />
-                    <AlertDescription className="text-sm whitespace-pre-line">
-                      {getApiKeyInstructions()}
-                    </AlertDescription>
-                  </Alert>
-                )}
-              </div>
-
               {/* Fetch Button */}
               <Button
                 onClick={handleFetchLiveTransactions}
-                disabled={!apiKey.trim() || isFetchingLive}
+                disabled={isFetchingLive}
                 className="w-full bg-gradient-primary hover:shadow-glow transition-all duration-300"
                 size="lg"
               >
