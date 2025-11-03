@@ -276,12 +276,12 @@ const GraphVisualization: React.FC<GraphVisualizationProps> = ({ data }) => {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
             {/* Layout Selection */}
             <div className="space-y-2">
-              <label className="text-sm font-medium">Layout Algorithm</label>
+              <label className="text-xs md:text-sm font-medium">Layout Algorithm</label>
               <Select value={selectedLayout} onValueChange={setSelectedLayout}>
-                <SelectTrigger>
+                <SelectTrigger className="h-9 md:h-10">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -294,7 +294,7 @@ const GraphVisualization: React.FC<GraphVisualizationProps> = ({ data }) => {
 
             {/* Risk Filter */}
             <div className="space-y-2">
-              <label className="text-sm font-medium">
+              <label className="text-xs md:text-sm font-medium">
                 Risk Threshold: {(filterRisk[0] * 100).toFixed(0)}%
               </label>
               <Slider
@@ -309,32 +309,35 @@ const GraphVisualization: React.FC<GraphVisualizationProps> = ({ data }) => {
 
             {/* Zoom Control */}
             <div className="space-y-2">
-              <label className="text-sm font-medium">Zoom Level</label>
+              <label className="text-xs md:text-sm font-medium">Zoom Level</label>
               <div className="flex items-center gap-2">
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => setZoomLevel(prev => Math.max(0.5, prev - 0.1))}
+                  className="h-9"
                 >
-                  <ZoomOut className="h-4 w-4" />
+                  <ZoomOut className="h-3 w-3 md:h-4 md:w-4" />
                 </Button>
-                <span className="text-sm font-mono">{(zoomLevel * 100).toFixed(0)}%</span>
+                <span className="text-xs md:text-sm font-mono min-w-[3rem] text-center">{(zoomLevel * 100).toFixed(0)}%</span>
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => setZoomLevel(prev => Math.min(3, prev + 0.1))}
+                  className="h-9"
                 >
-                  <ZoomIn className="h-4 w-4" />
+                  <ZoomIn className="h-3 w-3 md:h-4 md:w-4" />
                 </Button>
               </div>
             </div>
 
             {/* Export */}
             <div className="space-y-2">
-              <label className="text-sm font-medium">Export</label>
-              <Button onClick={exportGraph} variant="outline" className="w-full">
-                <Download className="h-4 w-4 mr-2" />
-                Export PNG
+              <label className="text-xs md:text-sm font-medium">Export</label>
+              <Button onClick={exportGraph} variant="outline" className="w-full h-9 md:h-10 text-xs md:text-sm">
+                <Download className="h-3 w-3 md:h-4 md:w-4 mr-2" />
+                <span className="hidden sm:inline">Export PNG</span>
+                <span className="sm:hidden">Export</span>
               </Button>
             </div>
           </div>
@@ -364,33 +367,33 @@ const GraphVisualization: React.FC<GraphVisualizationProps> = ({ data }) => {
             <canvas
               ref={canvasRef}
               onClick={handleCanvasClick}
-              className="w-full h-96 border border-border rounded-lg cursor-pointer"
+              className="w-full h-64 md:h-96 border border-border rounded-lg cursor-pointer"
               style={{ 
                 background: 'linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 100%)',
                 width: '100%',
-                height: '384px'
+                height: '16rem'
               }}
             />
             
             {/* Legend */}
-            <div className="absolute top-4 right-4 bg-card/90 backdrop-blur rounded-lg p-3 border border-border">
-              <h4 className="text-sm font-medium mb-2">Risk Levels</h4>
-              <div className="space-y-1 text-xs">
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full bg-success"></div>
-                  <span>Low Risk (&lt;40%)</span>
+            <div className="absolute top-2 right-2 md:top-4 md:right-4 bg-card/90 backdrop-blur rounded-lg p-2 md:p-3 border border-border max-w-[140px] md:max-w-none">
+              <h4 className="text-xs md:text-sm font-medium mb-1 md:mb-2">Risk Levels</h4>
+              <div className="space-y-0.5 md:space-y-1 text-[10px] md:text-xs">
+                <div className="flex items-center gap-1 md:gap-2">
+                  <div className="w-2 h-2 md:w-3 md:h-3 rounded-full bg-success flex-shrink-0"></div>
+                  <span className="truncate">Low (&lt;40%)</span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full bg-purple-500"></div>
-                  <span>Medium-Low (40-60%)</span>
+                <div className="flex items-center gap-1 md:gap-2">
+                  <div className="w-2 h-2 md:w-3 md:h-3 rounded-full bg-purple-500 flex-shrink-0"></div>
+                  <span className="truncate">Med-Low (40-60%)</span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full bg-warning"></div>
-                  <span>Medium (60-80%)</span>
+                <div className="flex items-center gap-1 md:gap-2">
+                  <div className="w-2 h-2 md:w-3 md:h-3 rounded-full bg-warning flex-shrink-0"></div>
+                  <span className="truncate">Medium (60-80%)</span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full bg-destructive"></div>
-                  <span>High Risk (&gt;80%)</span>
+                <div className="flex items-center gap-1 md:gap-2">
+                  <div className="w-2 h-2 md:w-3 md:h-3 rounded-full bg-destructive flex-shrink-0"></div>
+                  <span className="truncate">High (&gt;80%)</span>
                 </div>
               </div>
             </div>
@@ -409,32 +412,32 @@ const GraphVisualization: React.FC<GraphVisualizationProps> = ({ data }) => {
       </Card>
 
       {/* Graph Statistics */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-3 gap-2 md:gap-4">
         <Card className="bg-gradient-card border-border shadow-card">
-          <CardContent className="p-4">
+          <CardContent className="p-3 md:p-4">
             <div className="text-center">
-              <p className="text-2xl font-bold text-primary">{filteredNodes.length}</p>
-              <p className="text-sm text-muted-foreground">Visible Nodes</p>
+              <p className="text-lg md:text-2xl font-bold text-primary">{filteredNodes.length}</p>
+              <p className="text-xs md:text-sm text-muted-foreground">Nodes</p>
             </div>
           </CardContent>
         </Card>
         
         <Card className="bg-gradient-card border-border shadow-card">
-          <CardContent className="p-4">
+          <CardContent className="p-3 md:p-4">
             <div className="text-center">
-              <p className="text-2xl font-bold text-accent">{filteredEdges.length}</p>
-              <p className="text-sm text-muted-foreground">Visible Edges</p>
+              <p className="text-lg md:text-2xl font-bold text-accent">{filteredEdges.length}</p>
+              <p className="text-xs md:text-sm text-muted-foreground">Edges</p>
             </div>
           </CardContent>
         </Card>
         
         <Card className="bg-gradient-card border-border shadow-card">
-          <CardContent className="p-4">
+          <CardContent className="p-3 md:p-4">
             <div className="text-center">
-              <p className="text-2xl font-bold text-warning">
+              <p className="text-lg md:text-2xl font-bold text-warning">
                 {filteredNodes.filter(n => n.risk >= 0.6).length}
               </p>
-              <p className="text-sm text-muted-foreground">High Risk Nodes</p>
+              <p className="text-xs md:text-sm text-muted-foreground">High Risk</p>
             </div>
           </CardContent>
         </Card>

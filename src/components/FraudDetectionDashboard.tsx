@@ -125,93 +125,94 @@ const FraudDetectionDashboard: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background p-6">
-      <div className="max-w-7xl mx-auto space-y-6">
+    <div className="min-h-screen bg-background p-3 md:p-6">
+      <div className="max-w-7xl mx-auto space-y-4 md:space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div className="space-y-2">
-            <h1 className="text-4xl font-bold bg-gradient-primary bg-clip-text text-transparent">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+          <div className="space-y-1 md:space-y-2">
+            <h1 className="text-2xl md:text-4xl font-bold bg-gradient-primary bg-clip-text text-transparent">
               Ethereum Fraud Detection
             </h1>
-            <p className="text-muted-foreground text-lg">
+            <p className="text-muted-foreground text-sm md:text-lg">
               Advanced graph analysis for blockchain transaction monitoring
             </p>
           </div>
-          <div className="flex items-center gap-4">
-            <Badge variant="secondary" className="px-4 py-2">
-              <Shield className="h-4 w-4 mr-2" />
-              Network Analysis Engine
+          <div className="flex items-center gap-2 md:gap-4 w-full md:w-auto">
+            <Badge variant="secondary" className="px-3 md:px-4 py-1.5 md:py-2 text-xs md:text-sm">
+              <Shield className="h-3 w-3 md:h-4 md:w-4 mr-1 md:mr-2" />
+              <span className="hidden sm:inline">Network Analysis Engine</span>
+              <span className="sm:hidden">Analysis</span>
             </Badge>
           </div>
         </div>
 
         {/* Status Overview */}
         {fraudResults && (
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+          <div className="grid grid-cols-2 lg:grid-cols-5 gap-2 md:gap-4">
             <Card className="bg-gradient-card border-border shadow-card">
-              <CardContent className="p-6">
+              <CardContent className="p-3 md:p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-muted-foreground">Total Wallets</p>
-                    <p className="text-2xl font-bold">{fraudResults.stats.totalNodes.toLocaleString()}</p>
+                    <p className="text-xs md:text-sm text-muted-foreground">Total Wallets</p>
+                    <p className="text-lg md:text-2xl font-bold">{fraudResults.stats.totalNodes.toLocaleString()}</p>
                   </div>
-                  <Database className="h-8 w-8 text-primary" />
+                  <Database className="h-5 w-5 md:h-8 md:w-8 text-primary" />
                 </div>
               </CardContent>
             </Card>
             
             <Card className="bg-gradient-card border-border shadow-card">
-              <CardContent className="p-6">
+              <CardContent className="p-3 md:p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-muted-foreground">Transactions</p>
-                    <p className="text-2xl font-bold">{fraudResults.stats.totalEdges.toLocaleString()}</p>
+                    <p className="text-xs md:text-sm text-muted-foreground">Transactions</p>
+                    <p className="text-lg md:text-2xl font-bold">{fraudResults.stats.totalEdges.toLocaleString()}</p>
                   </div>
-                  <Network className="h-8 w-8 text-accent" />
+                  <Network className="h-5 w-5 md:h-8 md:w-8 text-accent" />
                 </div>
               </CardContent>
             </Card>
 
             <Card className="bg-gradient-card border-border shadow-card">
-              <CardContent className="p-6">
+              <CardContent className="p-3 md:p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-muted-foreground">Suspicious Wallets</p>
-                    <p className="text-2xl font-bold text-warning">{fraudResults.stats.suspiciousNodes}</p>
+                    <p className="text-xs md:text-sm text-muted-foreground">Suspicious</p>
+                    <p className="text-lg md:text-2xl font-bold text-warning">{fraudResults.stats.suspiciousNodes}</p>
                   </div>
-                  <AlertTriangle className="h-8 w-8 text-warning" />
+                  <AlertTriangle className="h-5 w-5 md:h-8 md:w-8 text-warning" />
                 </div>
               </CardContent>
             </Card>
 
             <Card className="bg-gradient-card border-border shadow-card">
-              <CardContent className="p-6">
+              <CardContent className="p-3 md:p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-muted-foreground">Risk Threshold</p>
-                    <p className="text-2xl font-bold">
-                      <Badge variant="secondary">
+                    <p className="text-xs md:text-sm text-muted-foreground">Threshold</p>
+                    <p className="text-base md:text-2xl font-bold">
+                      <Badge variant="secondary" className="text-xs md:text-sm">
                         {(fraudResults.stats.riskThreshold * 100).toFixed(1)}%
                       </Badge>
                     </p>
                   </div>
-                  <Activity className="h-8 w-8 text-primary" />
+                  <Activity className="h-5 w-5 md:h-8 md:w-8 text-primary" />
                 </div>
               </CardContent>
             </Card>
 
             <Card className="bg-gradient-card border-border shadow-card">
-              <CardContent className="p-6">
+              <CardContent className="p-3 md:p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-muted-foreground">Avg Risk Score</p>
-                    <p className="text-2xl font-bold">
-                      <Badge variant={getRiskBadgeVariant(fraudResults.stats.riskScore)}>
+                    <p className="text-xs md:text-sm text-muted-foreground">Avg Risk</p>
+                    <p className="text-base md:text-2xl font-bold">
+                      <Badge variant={getRiskBadgeVariant(fraudResults.stats.riskScore)} className="text-xs md:text-sm">
                         {(fraudResults.stats.riskScore * 100).toFixed(1)}%
                       </Badge>
                     </p>
                   </div>
-                  <TrendingUp className="h-8 w-8 text-destructive" />
+                  <TrendingUp className="h-5 w-5 md:h-8 md:w-8 text-destructive" />
                 </div>
               </CardContent>
             </Card>
@@ -219,23 +220,27 @@ const FraudDetectionDashboard: React.FC = () => {
         )}
 
         {/* Main Content */}
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4 bg-secondary/50">
-            <TabsTrigger value="upload" className="flex items-center gap-2">
-              <Upload className="h-4 w-4" />
-              Data Upload
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4 md:space-y-6">
+          <TabsList className="grid w-full grid-cols-4 bg-secondary/50 h-auto">
+            <TabsTrigger value="upload" className="flex flex-col md:flex-row items-center gap-1 md:gap-2 py-2 md:py-2.5 text-xs md:text-sm">
+              <Upload className="h-3 w-3 md:h-4 md:w-4" />
+              <span className="hidden sm:inline">Data Upload</span>
+              <span className="sm:hidden">Upload</span>
             </TabsTrigger>
-            <TabsTrigger value="processing" className="flex items-center gap-2">
-              <Activity className="h-4 w-4" />
-              Processing
+            <TabsTrigger value="processing" className="flex flex-col md:flex-row items-center gap-1 md:gap-2 py-2 md:py-2.5 text-xs md:text-sm">
+              <Activity className="h-3 w-3 md:h-4 md:w-4" />
+              <span className="hidden sm:inline">Processing</span>
+              <span className="sm:hidden">Process</span>
             </TabsTrigger>
-            <TabsTrigger value="visualization" className="flex items-center gap-2">
-              <Network className="h-4 w-4" />
-              Visualization
+            <TabsTrigger value="visualization" className="flex flex-col md:flex-row items-center gap-1 md:gap-2 py-2 md:py-2.5 text-xs md:text-sm">
+              <Network className="h-3 w-3 md:h-4 md:w-4" />
+              <span className="hidden sm:inline">Visualization</span>
+              <span className="sm:hidden">Graph</span>
             </TabsTrigger>
-            <TabsTrigger value="results" className="flex items-center gap-2">
-              <AlertTriangle className="h-4 w-4" />
-              Fraud Results
+            <TabsTrigger value="results" className="flex flex-col md:flex-row items-center gap-1 md:gap-2 py-2 md:py-2.5 text-xs md:text-sm">
+              <AlertTriangle className="h-3 w-3 md:h-4 md:w-4" />
+              <span className="hidden sm:inline">Fraud Results</span>
+              <span className="sm:hidden">Results</span>
             </TabsTrigger>
           </TabsList>
 

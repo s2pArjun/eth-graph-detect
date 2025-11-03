@@ -189,35 +189,39 @@ const FraudResults: React.FC<FraudResultsProps> = ({
       </Alert>
 
       {/* Action Buttons */}
-      <div className="flex flex-wrap items-center gap-4">
-        <Button onClick={exportResults} variant="outline" className="flex items-center gap-2">
-          <Download className="h-4 w-4" />
-          Export Full Results (JSON)
+      <div className="flex flex-wrap items-center gap-2 md:gap-4">
+        <Button onClick={exportResults} variant="outline" className="flex items-center gap-2 text-xs md:text-sm h-8 md:h-10 px-2 md:px-4">
+          <Download className="h-3 w-3 md:h-4 md:w-4" />
+          <span className="hidden sm:inline">Export Full Results (JSON)</span>
+          <span className="sm:hidden">Results</span>
         </Button>
         
-        <Button onClick={exportSuspiciousNodesCSV} variant="outline" className="flex items-center gap-2">
-          <Download className="h-4 w-4" />
-          Download Suspicious Nodes (CSV)
+        <Button onClick={exportSuspiciousNodesCSV} variant="outline" className="flex items-center gap-2 text-xs md:text-sm h-8 md:h-10 px-2 md:px-4">
+          <Download className="h-3 w-3 md:h-4 md:w-4" />
+          <span className="hidden sm:inline">Download Suspicious Nodes (CSV)</span>
+          <span className="sm:hidden">CSV</span>
         </Button>
 
-        <div className="h-6 w-px bg-border" />
+        <div className="hidden md:block h-6 w-px bg-border" />
 
         <Button 
           onClick={exportGCNGraphSuspiciousOnly} 
           variant="default" 
-          className="flex items-center gap-2 bg-primary"
+          className="flex items-center gap-2 bg-primary text-xs md:text-sm h-8 md:h-10 px-2 md:px-4"
         >
-          <FileJson className="h-4 w-4" />
-          GCN Graph (Suspicious Only)
+          <FileJson className="h-3 w-3 md:h-4 md:w-4" />
+          <span className="hidden lg:inline">GCN Graph (Suspicious Only)</span>
+          <span className="lg:hidden">GCN Suspicious</span>
         </Button>
         
         <Button 
           onClick={exportGCNGraphWithNeighbors} 
           variant="default" 
-          className="flex items-center gap-2 bg-accent"
+          className="flex items-center gap-2 bg-accent text-xs md:text-sm h-8 md:h-10 px-2 md:px-4"
         >
-          <FileJson className="h-4 w-4" />
-          GCN Graph (With Neighbors)
+          <FileJson className="h-3 w-3 md:h-4 md:w-4" />
+          <span className="hidden lg:inline">GCN Graph (With Neighbors)</span>
+          <span className="lg:hidden">GCN + Neighbors</span>
         </Button>
       </div>
 
@@ -269,23 +273,27 @@ const FraudResults: React.FC<FraudResultsProps> = ({
         </Card>
       )}
 
-      <Tabs defaultValue="high-risk" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4 bg-secondary/50">
-          <TabsTrigger value="high-risk" className="flex items-center gap-2">
-            <AlertTriangle className="h-4 w-4" />
-            High Risk Wallets
+      <Tabs defaultValue="high-risk" className="space-y-4 md:space-y-6">
+        <TabsList className="grid w-full grid-cols-4 bg-secondary/50 h-auto">
+          <TabsTrigger value="high-risk" className="flex flex-col md:flex-row items-center gap-1 md:gap-2 py-2 md:py-2.5 text-xs md:text-sm">
+            <AlertTriangle className="h-3 w-3 md:h-4 md:w-4" />
+            <span className="hidden sm:inline">High Risk Wallets</span>
+            <span className="sm:hidden">High Risk</span>
           </TabsTrigger>
-          <TabsTrigger value="scc" className="flex items-center gap-2">
-            <Users className="h-4 w-4" />
-            Connected Components
+          <TabsTrigger value="scc" className="flex flex-col md:flex-row items-center gap-1 md:gap-2 py-2 md:py-2.5 text-xs md:text-sm">
+            <Users className="h-3 w-3 md:h-4 md:w-4" />
+            <span className="hidden sm:inline">Connected Components</span>
+            <span className="sm:hidden">Groups</span>
           </TabsTrigger>
-          <TabsTrigger value="cycles" className="flex items-center gap-2">
-            <RefreshCw className="h-4 w-4" />
-            Detected Cycles
+          <TabsTrigger value="cycles" className="flex flex-col md:flex-row items-center gap-1 md:gap-2 py-2 md:py-2.5 text-xs md:text-sm">
+            <RefreshCw className="h-3 w-3 md:h-4 md:w-4" />
+            <span className="hidden sm:inline">Detected Cycles</span>
+            <span className="sm:hidden">Cycles</span>
           </TabsTrigger>
-          <TabsTrigger value="pagerank" className="flex items-center gap-2">
-            <TrendingUp className="h-4 w-4" />
-            Influence Ranking
+          <TabsTrigger value="pagerank" className="flex flex-col md:flex-row items-center gap-1 md:gap-2 py-2 md:py-2.5 text-xs md:text-sm">
+            <TrendingUp className="h-3 w-3 md:h-4 md:w-4" />
+            <span className="hidden sm:inline">Influence Ranking</span>
+            <span className="sm:hidden">Ranking</span>
           </TabsTrigger>
         </TabsList>
 
