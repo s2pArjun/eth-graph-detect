@@ -1,5 +1,9 @@
-// Etherscan API Integration
+// Etherscan API V2 Integration
 // Fetches latest Ethereum transactions and converts them to CSV-compatible format
+
+// V2 API Configuration
+const ETHERSCAN_BASE_URL = 'https://api.etherscan.io/v2/api';
+const ETHEREUM_CHAIN_ID = '1'; // Ethereum Mainnet
 
 interface EtherscanTransaction {
   hash: string;
@@ -27,6 +31,17 @@ interface FormattedTransaction {
   transaction_hash: string;
   block_number: number;
   gas_price: number;
+}
+
+/**
+ * Build V2 API URL with required chainid parameter
+ */
+function buildV2Url(params: Record<string, string>): string {
+  const urlParams = new URLSearchParams({
+    chainid: ETHEREUM_CHAIN_ID,
+    ...params
+  });
+  return `${ETHERSCAN_BASE_URL}?${urlParams.toString()}`;
 }
 
 /**
@@ -78,7 +93,13 @@ function hexToDecimal(hexValue: string): number {
  */
 async function fetchLatestBlock(apiKey: string): Promise<EtherscanBlockResponse | null> {
   try {
-    const url = `https://api.etherscan.io/api?module=proxy&action=eth_getBlockByNumber&tag=latest&boolean=true&apikey=${apiKey}`;
+    const url = buildV2Url({
+      module: 'proxy',
+      action: 'eth_getBlockByNumber',
+      tag: 'latest',
+      boolean: 'true',
+      apikey: apiKey
+    });
     
     const response = await fetch(url);
     if (!response.ok) {
@@ -101,9 +122,12 @@ async function fetchRecentBlocks(apiKey: string, blockCount: number = 3): Promis
   
   try {
     // First, get the latest block number
-    const latestBlockResponse = await fetch(
-      `https://api.etherscan.io/api?module=proxy&action=eth_blockNumber&apikey=${apiKey}`
-    );
+    const latestBlockUrl = buildV2Url({
+      module: 'proxy',
+      action: 'eth_blockNumber',
+      apikey: apiKey
+    });
+    const latestBlockResponse = await fetch(latestBlockUrl);
     const latestBlockData = await latestBlockResponse.json();
     const latestBlockNumber = hexToDecimal(latestBlockData.result);
     
@@ -113,7 +137,13 @@ async function fetchRecentBlocks(apiKey: string, blockCount: number = 3): Promis
     const blockPromises = [];
     for (let i = 0; i < blockCount; i++) {
       const blockNumber = `0x${(latestBlockNumber - i).toString(16)}`;
-      const url = `https://api.etherscan.io/api?module=proxy&action=eth_getBlockByNumber&tag=${blockNumber}&boolean=true&apikey=${apiKey}`;
+      const url = buildV2Url({
+        module: 'proxy',
+        action: 'eth_getBlockByNumber',
+        tag: blockNumber,
+        boolean: 'true',
+        apikey: apiKey
+      });
       blockPromises.push(fetch(url));
     }
     
@@ -205,9 +235,13 @@ export async function fetchLatestTransactions(
  */
 export async function validateApiKey(apiKey: string): Promise<boolean> {
   try {
-    const response = await fetch(
-      `https://api.etherscan.io/api?module=account&action=balance&address=0x0000000000000000000000000000000000000000&apikey=${apiKey}`
-    );
+    const url = buildV2Url({
+      module: 'account',
+      action: 'balance',
+      address: '0x0000000000000000000000000000000000000000',
+      apikey: apiKey
+    });
+    const response = await fetch(url);
     const data = await response.json();
     return data.status === '1' || data.message !== 'NOTOK';
   } catch (error) {
