@@ -69,7 +69,12 @@ const DataUpload: React.FC<DataUploadProps> = ({ onDataUpload }) => {
         const values = line.split(',').map(v => v.trim());
         const row: any = {};
         headers.forEach((header, index) => {
-          row[header] = values[index] || '';
+          // Convert numeric columns to numbers
+          if (header === 'value' || header === 'gas_price') {
+            row[header] = parseFloat(values[index]) || 0;
+          } else {
+            row[header] = values[index] || '';
+          }
         });
         return row;
       });
@@ -100,7 +105,12 @@ const DataUpload: React.FC<DataUploadProps> = ({ onDataUpload }) => {
         const values = line.split(',').map(v => v.trim());
         const row: any = {};
         headers.forEach((header, index) => {
-          row[header] = values[index] || '';
+          // Convert numeric columns to numbers
+          if (header === 'value' || header === 'gas_price') {
+            row[header] = parseFloat(values[index]) || 0;
+          } else {
+            row[header] = values[index] || '';
+          }
         });
         return row;
       });
