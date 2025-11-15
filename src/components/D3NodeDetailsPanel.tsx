@@ -2,7 +2,7 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { X, Copy, AlertTriangle, TrendingUp, Activity } from "lucide-react";
+import { X, Copy, AlertTriangle, TrendingUp, Activity, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 
 interface Node {
@@ -221,6 +221,15 @@ const D3NodeDetailsPanel: React.FC<D3NodeDetailsPanelProps> = ({ node, edges, on
             >
               <Copy className="h-3 w-3 mr-2" />
               Copy Address
+            </Button>
+            <Button
+              onClick={() => window.open(`https://etherscan.io/address/${node.id}`, '_blank')}
+              variant="default"
+              size="sm"
+              className="flex-1"
+            >
+              <ExternalLink className="h-3 w-3 mr-2" />
+              View on Etherscan
             </Button>
           </div>
 
